@@ -1,12 +1,21 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
 import CalculatorPage from './pages/CalculatorPage'
+import HomePage from './pages/HomePage'
+import PricingPage from './pages/PricingPage'
 
 function App() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      <Navbar />
-      <CalculatorPage />
-    </div>
+    <BrowserRouter>
+      <div className="min-h-screen bg-[#0a0a0a]">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/calculator" element={<CalculatorPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   )
 }
 
