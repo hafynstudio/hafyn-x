@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { DEVICES, PLAYSTYLES } from '../../utils/deviceList'
-import { calculateSensitivity } from '../../lib/sensitivityEngine'
+import { DEVICES } from '../../utils/deviceList'
+import {
+  calculateSensitivity,
+  PLAYER_PROFILES,
+} from '../../lib/sensitivityEngine'
+
+const PROFILE_IDS = Object.keys(PLAYER_PROFILES)
 
 function getDeviceDisplayName(device) {
   return `${device.brand} ${device.name}`
@@ -10,7 +15,7 @@ export default function SensitivityForm({ onCalculate }) {
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [manualDPI, setManualDPI] = useState('')
   const [isManualDPIOpen, setIsManualDPIOpen] = useState(false)
-  const [selectedPlaystyle, setSelectedPlaystyle] = useState('balanced')
+  const [selectedPlaystyle, setSelectedPlaystyle] = useState('balanced_competitive')
   const [searchQuery, setSearchQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
@@ -62,24 +67,32 @@ export default function SensitivityForm({ onCalculate }) {
     clearError()
   }
 
-  function resolveDPI() {
+  function resolveDeviceInput() {
     const parsedManualDPI = Number(manualDPI)
 
-    if (isManualDPIOpen && manualDPI && parsedManualDPI >= 100 && parsedManualDPI <= 1200) {
-      return parsedManualDPI
+    if (
+      isManualDPIOpen &&
+      manualDPI &&
+      parsedManualDPI >= 100 &&
+      parsedManualDPI <= 1200
+    ) {
+      return { dpi: parsedManualDPI, deviceType: null }
     }
 
     if (selectedDevice) {
-      return selectedDevice.dpi
+      return {
+        dpi: selectedDevice.dpi,
+        deviceType: selectedDevice.deviceType,
+      }
     }
 
     return null
   }
 
   function handleCalculate() {
-    const dpi = resolveDPI()
+    const deviceInput = resolveDeviceInput()
 
-    if (!dpi) {
+    if (!deviceInput) {
       setShowError(true)
       return
     }
@@ -87,7 +100,8 @@ export default function SensitivityForm({ onCalculate }) {
     setShowError(false)
 
     const result = calculateSensitivity({
-      deviceDPI: dpi,
+      deviceDPI: deviceInput.dpi,
+      deviceType: deviceInput.deviceType,
       playstyle: selectedPlaystyle,
     })
 
@@ -176,7 +190,6 @@ export default function SensitivityForm({ onCalculate }) {
           )}
         </div>
 
-        {/* Manual DPI Mode */}
         <button
           type="button"
           onClick={() => setIsManualDPIOpen((prev) => !prev)}
@@ -214,20 +227,22 @@ export default function SensitivityForm({ onCalculate }) {
         )}
       </section>
 
-      {/* Section 2 — Playstyle */}
+      {/* Section 2 — Pro player profiles */}
       <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
         <label className="mb-3 block text-sm font-semibold text-white">
           Your Playstyle
         </label>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {PLAYSTYLES.map((style) => {
-            const isSelected = selectedPlaystyle === style.id
+          {PROFILE_IDS.map((profileId) => {
+            const profile = PLAYER_PROFILES[profileId]
+            const isSelected = selectedPlaystyle === profileId
+
             return (
               <button
-                key={style.id}
+                key={profileId}
                 type="button"
-                onClick={() => setSelectedPlaystyle(style.id)}
+                onClick={() => setSelectedPlaystyle(profileId)}
                 className={`rounded-xl border p-4 text-left transition ${
                   isSelected
                     ? 'border-brand-yellow text-brand-yellow'
@@ -235,15 +250,18 @@ export default function SensitivityForm({ onCalculate }) {
                 }`}
               >
                 <span className="text-2xl" role="img" aria-hidden>
-                  {style.icon}
+                  {profile.icon}
                 </span>
-                <p className="mt-2 text-sm font-semibold">{style.name}</p>
+                <p className="mt-2 text-sm font-semibold">{profile.name}</p>
                 <p
                   className={`mt-1 text-xs leading-relaxed ${
                     isSelected ? 'text-brand-yellow/80' : 'text-zinc-400'
                   }`}
                 >
-                  {style.description}
+                  {profile.description}
+                </p>
+                <p className="mt-2 text-xs text-[#00D4FF]">
+                  Like: {profile.proPlayer}
                 </p>
               </button>
             )
