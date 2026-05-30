@@ -8,30 +8,32 @@ const features = [
     icon: '⚡',
   },
   {
-    title: '50+ Devices',
+    title: '50+ Devices Supported',
     description:
       'Search popular phones from Samsung, Xiaomi, Infinix, OPPO, Vivo, and Tecno across South Asia & MENA.',
     icon: '📱',
   },
   {
-    title: 'Pro Profiles',
+    title: 'Pro Player Presets',
     description:
       'Playstyle-based presets tuned for aggressive rushers, balanced ranked players, and long-range specialists.',
     icon: '🎯',
   },
 ]
 
+const stats = [
+  { value: '2,000+', label: 'Players Helped' },
+  { value: '50+', label: 'Devices' },
+  { value: 'Free', label: 'Forever' },
+]
+
 export default function HomePage() {
   return (
     <div className="bg-[#0a0a0a]">
       {/* Hero */}
-      <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:pb-28 sm:pt-24">
+      <section className="relative overflow-hidden px-4 pb-16 pt-16 sm:pb-20 sm:pt-24">
         <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.08)_0%,_transparent_60%)]"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:64px_64px]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.07)_0%,_transparent_55%)]"
           aria-hidden
         />
 
@@ -48,7 +50,7 @@ export default function HomePage() {
           </p>
           <Link
             to="/calculator"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#F59E0B] px-8 py-3.5 text-sm font-bold text-black transition hover:bg-amber-400 sm:text-base"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#F59E0B] px-8 py-3.5 text-sm font-bold text-black sm:text-base"
           >
             Calculate My Sensitivity
             <span aria-hidden>→</span>
@@ -56,8 +58,25 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Stats bar */}
+      <section className="border-y border-zinc-800 bg-zinc-900/40 px-4 py-5">
+        <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-4 sm:flex-row sm:gap-0 sm:divide-x sm:divide-zinc-800">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="flex items-center gap-2 px-6 text-center sm:text-left"
+            >
+              <span className="text-sm font-bold text-[#F59E0B] sm:text-base">
+                {stat.value}
+              </span>
+              <span className="text-sm text-zinc-400">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Features */}
-      <section className="border-t border-zinc-800/80 px-4 py-16 sm:py-20">
+      <section className="px-4 py-16 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-10 text-center sm:mb-12">
             <h2 className="text-xl font-semibold text-white sm:text-2xl">
@@ -72,7 +91,7 @@ export default function HomePage() {
             {features.map((feature) => (
               <article
                 key={feature.title}
-                className="rounded-2xl border border-zinc-800 bg-zinc-800/50 p-6 transition hover:border-zinc-700 hover:bg-zinc-800/80"
+                className="rounded-2xl border border-zinc-800 bg-zinc-800 p-6"
               >
                 <span className="text-2xl" role="img" aria-hidden>
                   {feature.icon}
