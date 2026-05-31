@@ -4,13 +4,14 @@ import SensitivityResult from '../components/calculator/SensitivityResult'
 
 export default function CalculatorPage() {
   const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
   const resultRef = useRef(null)
 
   useEffect(() => {
-    if (result && resultRef.current) {
+    if (result && !loading && resultRef.current) {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  }, [result])
+  }, [result, loading])
 
   return (
     <div className="min-h-screen bg-brand-dark px-4 py-8 sm:py-10">
@@ -24,11 +25,14 @@ export default function CalculatorPage() {
           </p>
         </header>
 
-        <SensitivityForm onCalculate={setResult} />
+        <SensitivityForm
+          onCalculate={setResult}
+          onLoadingChange={setLoading}
+        />
 
-        {result && (
+        {(result || loading) && (
           <div ref={resultRef} className="mt-10 scroll-mt-6">
-            <SensitivityResult result={result} />
+            <SensitivityResult result={result} loading={loading} />
           </div>
         )}
       </div>

@@ -1,25 +1,85 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { DEVICES } from '../../utils/deviceList'
-import {
-  calculateSensitivity,
-  PLAYER_PROFILES,
-} from '../../lib/sensitivityEngine'
+import { getAISensitivity } from '../../lib/groqAI'
+import { PLAYER_PROFILES } from '../../lib/sensitivityEngine'
 
 const PROFILE_IDS = Object.keys(PLAYER_PROFILES)
+
+const EXPERIENCE_OPTIONS = [
+  { id: 'beginner', label: 'Beginner', description: 'Just started' },
+  { id: 'intermediate', label: 'Intermediate', description: 'Few months' },
+  { id: 'advanced', label: 'Advanced', description: '1+ year' },
+  { id: 'professional', label: 'Professional', description: 'Competitive' },
+]
+
+const RANGE_OPTIONS = [
+  { id: 'close_range', label: 'Close Range', description: 'Rush / hip fire' },
+  { id: 'mid_range', label: 'Mid Range', description: 'Balanced' },
+  { id: 'long_range', label: 'Long Range', description: 'Scope / sniper' },
+  { id: 'all_range', label: 'All Range', description: 'Mixed' },
+]
+
+const SCOPE_OPTIONS = [
+  { id: 'rarely', label: 'Rarely', description: 'Mostly hip fire' },
+  { id: 'sometimes', label: 'Sometimes', description: '2x mainly' },
+  { id: 'often', label: 'Often', description: '2x and 4x' },
+  { id: 'always', label: 'Always', description: 'Scope everything' },
+]
 
 function getDeviceDisplayName(device) {
   return `${device.brand} ${device.name}`
 }
 
-export default function SensitivityForm({ onCalculate }) {
+function OptionCards({ label, options, value, onChange }) {
+  return (
+    <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
+      <label className="mb-3 block text-sm font-semibold text-white">
+        {label}
+      </label>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {options.map((option) => {
+          const isSelected = value === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onChange(option.id)}
+              className={`rounded-xl border p-3 text-left transition ${
+                isSelected
+                  ? 'border-brand-yellow text-brand-yellow'
+                  : 'border-brand-border text-white hover:border-zinc-600'
+              }`}
+            >
+              <p className="text-sm font-semibold">{option.label}</p>
+              <p
+                className={`mt-0.5 text-xs ${
+                  isSelected ? 'text-brand-yellow/80' : 'text-zinc-400'
+                }`}
+              >
+                {option.description}
+              </p>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+export default function SensitivityForm({ onCalculate, onLoadingChange }) {
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [manualDPI, setManualDPI] = useState('')
   const [isManualDPIOpen, setIsManualDPIOpen] = useState(false)
   const [selectedPlaystyle, setSelectedPlaystyle] = useState('balanced_competitive')
+  const [experience, setExperience] = useState('intermediate')
+  const [preferredRange, setPreferredRange] = useState('mid_range')
+  const [scopes, setScopes] = useState('sometimes')
   const [searchQuery, setSearchQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
   const [showError, setShowError] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const dropdownRef = useRef(null)
 
@@ -76,20 +136,25 @@ export default function SensitivityForm({ onCalculate }) {
       parsedManualDPI >= 100 &&
       parsedManualDPI <= 1200
     ) {
-      return { dpi: parsedManualDPI, deviceType: null }
+      return {
+        dpi: parsedManualDPI,
+        deviceType: null,
+        deviceName: `Manual Entry (${parsedManualDPI} DPI)`,
+      }
     }
 
     if (selectedDevice) {
       return {
         dpi: selectedDevice.dpi,
         deviceType: selectedDevice.deviceType,
+        deviceName: getDeviceDisplayName(selectedDevice),
       }
     }
 
     return null
   }
 
-  function handleCalculate() {
+  async function handleCalculate() {
     const deviceInput = resolveDeviceInput()
 
     if (!deviceInput) {
@@ -98,14 +163,27 @@ export default function SensitivityForm({ onCalculate }) {
     }
 
     setShowError(false)
+    setIsLoading(true)
+    onLoadingChange?.(true)
 
-    const result = calculateSensitivity({
-      deviceDPI: deviceInput.dpi,
-      deviceType: deviceInput.deviceType,
-      playstyle: selectedPlaystyle,
-    })
+    try {
+      const result = await getAISensitivity({
+        deviceName: deviceInput.deviceName,
+        deviceDPI: deviceInput.dpi,
+        deviceType: deviceInput.deviceType ?? 'unknown',
+        playstyle: selectedPlaystyle,
+        experience,
+        preferredRange,
+        scopes,
+      })
 
-    onCalculate(result)
+      onCalculate(result)
+    } catch {
+      setShowError(true)
+    } finally {
+      setIsLoading(false)
+      onLoadingChange?.(false)
+    }
   }
 
   const isDropdownVisible =
@@ -137,14 +215,16 @@ export default function SensitivityForm({ onCalculate }) {
                 }
               }}
               placeholder="Search your phone model..."
-              className="w-full rounded-lg border border-[#333] bg-[#111111] py-3 pl-4 pr-10 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+              disabled={isLoading}
+              className="w-full rounded-lg border border-[#333] bg-[#111111] py-3 pl-4 pr-10 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF] disabled:opacity-60"
             />
 
             {(selectedDevice || searchQuery) && (
               <button
                 type="button"
                 onClick={handleClearSelection}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 transition hover:text-white"
+                disabled={isLoading}
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-white disabled:opacity-50"
                 aria-label="Clear selection"
               >
                 ✕
@@ -193,7 +273,8 @@ export default function SensitivityForm({ onCalculate }) {
         <button
           type="button"
           onClick={() => setIsManualDPIOpen((prev) => !prev)}
-          className="mt-4 cursor-pointer text-sm text-[#00D4FF] transition hover:underline"
+          disabled={isLoading}
+          className="mt-4 cursor-pointer text-sm text-[#00D4FF] hover:underline disabled:opacity-50"
         >
           📱 My phone isn&apos;t listed — enter DPI manually
         </button>
@@ -216,8 +297,9 @@ export default function SensitivityForm({ onCalculate }) {
                 setManualDPI(e.target.value)
                 clearError()
               }}
+              disabled={isLoading}
               placeholder="e.g. 400"
-              className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+              className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF] disabled:opacity-60"
             />
             <p className="mt-2 text-xs text-zinc-500">
               Common DPI values: Budget phones 240-400 | Mid-range 400-800 |
@@ -243,7 +325,8 @@ export default function SensitivityForm({ onCalculate }) {
                 key={profileId}
                 type="button"
                 onClick={() => setSelectedPlaystyle(profileId)}
-                className={`rounded-xl border p-4 text-left transition ${
+                disabled={isLoading}
+                className={`rounded-xl border p-4 text-left transition disabled:opacity-60 ${
                   isSelected
                     ? 'border-brand-yellow text-brand-yellow'
                     : 'border-brand-border text-white hover:border-zinc-600'
@@ -269,14 +352,43 @@ export default function SensitivityForm({ onCalculate }) {
         </div>
       </section>
 
+      <OptionCards
+        label="Experience Level"
+        options={EXPERIENCE_OPTIONS}
+        value={experience}
+        onChange={setExperience}
+      />
+
+      <OptionCards
+        label="Preferred Range"
+        options={RANGE_OPTIONS}
+        value={preferredRange}
+        onChange={setPreferredRange}
+      />
+
+      <OptionCards
+        label="Scope Usage"
+        options={SCOPE_OPTIONS}
+        value={scopes}
+        onChange={setScopes}
+      />
+
       {/* Calculate */}
       <div>
         <button
           type="button"
           onClick={handleCalculate}
-          className="w-full rounded-xl bg-brand-yellow py-4 text-base font-bold text-black transition hover:bg-yellow-400"
+          disabled={isLoading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-yellow py-4 text-base font-bold text-black disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Calculate My Sensitivity 🎯
+          {isLoading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              🤖 AI Analyzing...
+            </>
+          ) : (
+            'Calculate My Sensitivity 🎯'
+          )}
         </button>
 
         {showError && (
