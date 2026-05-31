@@ -1,6 +1,7 @@
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import HafynLogo from '../components/brand/HafynLogo'
+import costaLogo from '../assets/costa-logo.png'
 
 const PRO_PLAYERS = [
   {
@@ -460,7 +461,7 @@ export default function HomePage() {
               }}
             >
               <img
-                src="/costa-logo.png"
+                src={costaLogo}
                 alt="Costa Gamerz"
                 style={{
                   width: '40px',

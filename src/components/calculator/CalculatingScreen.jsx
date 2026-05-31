@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import hafynLogo from '../../assets/hafynx-logo.png'
 
 const STEPS = [
   {
@@ -116,7 +117,7 @@ export default function CalculatingScreen({
     <div className="rounded-2xl border border-white/[0.06] bg-black/80 px-4 py-12 backdrop-blur-sm sm:py-16">
       <div className="mx-auto max-w-md text-center">
         <img
-          src="/hafynx-logo.png"
+          src={hafynLogo}
           alt="HAFYN X"
           style={{
             width: 60,

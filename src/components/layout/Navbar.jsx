@@ -3,18 +3,19 @@ import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import AuthModal from '../auth/AuthModal'
+import hafynLogo from '../../assets/hafynx-logo.png'
 
 function NavbarLogo() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
       <img
-        src="/hafynx-logo.png"
+        src={hafynLogo}
         alt="HAFYN X"
         style={{
-          height: '36px',
-          width: '36px',
+          height: '32px',
+          width: '32px',
           objectFit: 'contain',
-          filter: 'drop-shadow(0 0 8px rgba(0,246,255,0.6))',
+          filter: 'drop-shadow(0 0 10px rgba(0,246,255,0.8))',
         }}
       />
       <span

@@ -6,6 +6,7 @@ import { useSubscription } from '../../hooks/useSubscription'
 import { supabase } from '../../lib/supabase'
 import { getCoachChatResponse } from '../../lib/groqAI'
 import AuthModal from '../auth/AuthModal'
+import costaLogo from '../../assets/costa-logo.png'
 
 const CHAT_COUNT_KEY = 'hafynx_chat_count'
 const CHAT_RESET_KEY = 'hafynx_chat_reset'
@@ -179,7 +180,7 @@ export default function CoachChat() {
           >
             <div className="relative shrink-0">
               <img
-                src="/costa-logo.png"
+                src={costaLogo}
                 alt="HAFYN X Coach"
                 className="h-[42px] w-[42px] rounded-full border-2 border-[#00F6FF] object-cover"
               />
@@ -371,7 +372,7 @@ export default function CoachChat() {
           aria-hidden
         />
         <img
-          src="/costa-logo.png"
+          src={costaLogo}
           alt="Coach"
           style={{
             width: 36,
