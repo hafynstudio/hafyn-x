@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { DEVICES } from '../../utils/deviceList'
-import { getAISensitivity } from '../../lib/groqAI'
 import { PLAYER_PROFILES } from '../../lib/sensitivityEngine'
 
 const PROFILE_IDS = Object.keys(PLAYER_PROFILES)
@@ -31,7 +29,18 @@ function getDeviceDisplayName(device) {
   return `${device.brand} ${device.name}`
 }
 
-function OptionCards({ label, options, value, onChange }) {
+function getTierBadgeLabel(device) {
+  if (device.deviceType === 'iphone') return 'iPhone'
+  if (device.deviceType === 'android_gaming') return 'Gaming'
+  const tierLabels = {
+    budget: 'Budget',
+    mid: 'Mid',
+    flagship: 'Flagship',
+  }
+  return tierLabels[device.tier] || device.tier
+}
+
+function OptionCards({ label, options, value, onChange, disabled }) {
   return (
     <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
       <label className="mb-3 block text-sm font-semibold text-white">
@@ -44,8 +53,9 @@ function OptionCards({ label, options, value, onChange }) {
             <button
               key={option.id}
               type="button"
+              disabled={disabled}
               onClick={() => onChange(option.id)}
-              className={`rounded-xl border p-3 text-left transition ${
+              className={`rounded-xl border p-3 text-left transition disabled:opacity-60 ${
                 isSelected
                   ? 'border-brand-yellow text-brand-yellow'
                   : 'border-brand-border text-white hover:border-zinc-600'
@@ -67,10 +77,86 @@ function OptionCards({ label, options, value, onChange }) {
   )
 }
 
-export default function SensitivityForm({ onCalculate, onLoadingChange }) {
+function DeviceInfoCard({ device, dpiOverride, customDPI, onToggleOverride, onCustomDPIChange }) {
+  const displayDpi =
+    dpiOverride && customDPI ? Number(customDPI) : device.dpi
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="rounded-xl border border-[#333] bg-[#111111] p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl" aria-hidden>
+            📱
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-white">
+              {getDeviceDisplayName(device)}
+            </p>
+            <p className="mt-1 text-sm text-[#00D4FF]">
+              Detected DPI: {displayDpi}
+            </p>
+            <span className="mt-2 inline-block rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-semibold text-zinc-300">
+              {getTierBadgeLabel(device)}
+            </span>
+            <p className="mt-2 text-xs text-zinc-500">
+              DPI affects your sensitivity calculation
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl border border-brand-border bg-brand-card px-4 py-3">
+        <span className="text-sm text-zinc-300">⚙️ Override DPI manually</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={dpiOverride}
+          onClick={onToggleOverride}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+            dpiOverride ? 'bg-[#00D4FF]' : 'bg-brand-border'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition ${
+              dpiOverride ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      {dpiOverride && (
+        <div>
+          <label
+            htmlFor="custom-dpi-override"
+            className="mb-2 block text-sm font-medium text-white"
+          >
+            Enter Custom DPI
+          </label>
+          <input
+            id="custom-dpi-override"
+            type="number"
+            min="100"
+            max="1200"
+            value={customDPI}
+            onChange={(e) => onCustomDPIChange(e.target.value)}
+            placeholder="e.g. 520"
+            className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+          />
+          <p className="mt-2 text-xs text-zinc-500">
+            Your phone&apos;s actual DPI if you know it
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function SensitivityForm({ onCalculateRequest }) {
   const [selectedDevice, setSelectedDevice] = useState(null)
+  const [manualOnly, setManualOnly] = useState(false)
   const [manualDPI, setManualDPI] = useState('')
-  const [isManualDPIOpen, setIsManualDPIOpen] = useState(false)
+  const [dpiOverride, setDpiOverride] = useState(false)
+  const [customDPI, setCustomDPI] = useState('')
   const [selectedPlaystyle, setSelectedPlaystyle] = useState('balanced_competitive')
   const [experience, setExperience] = useState('intermediate')
   const [preferredRange, setPreferredRange] = useState('mid_range')
@@ -79,7 +165,6 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
   const [showError, setShowError] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
 
   const dropdownRef = useRef(null)
 
@@ -114,9 +199,12 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
 
   function handleSelectDevice(device) {
     setSelectedDevice(device)
+    setManualOnly(false)
     setSearchQuery(getDeviceDisplayName(device))
     setShowDropdown(false)
     setIsInputFocused(false)
+    setDpiOverride(false)
+    setCustomDPI('')
     clearError()
   }
 
@@ -124,28 +212,33 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
     setSelectedDevice(null)
     setSearchQuery('')
     setShowDropdown(false)
+    setDpiOverride(false)
+    setCustomDPI('')
     clearError()
   }
 
   function resolveDeviceInput() {
-    const parsedManualDPI = Number(manualDPI)
-
-    if (
-      isManualDPIOpen &&
-      manualDPI &&
-      parsedManualDPI >= 100 &&
-      parsedManualDPI <= 1200
-    ) {
-      return {
-        dpi: parsedManualDPI,
-        deviceType: null,
-        deviceName: `Manual Entry (${parsedManualDPI} DPI)`,
+    if (manualOnly) {
+      const parsed = Number(manualDPI)
+      if (manualDPI && parsed >= 100 && parsed <= 1200) {
+        return {
+          dpi: parsed,
+          deviceType: null,
+          deviceName: `Manual Entry (${parsed} DPI)`,
+        }
       }
+      return null
     }
 
     if (selectedDevice) {
+      const parsedOverride = Number(customDPI)
+      const dpi =
+        dpiOverride && customDPI && parsedOverride >= 100 && parsedOverride <= 1200
+          ? parsedOverride
+          : selectedDevice.dpi
+
       return {
-        dpi: selectedDevice.dpi,
+        dpi,
         deviceType: selectedDevice.deviceType,
         deviceName: getDeviceDisplayName(selectedDevice),
       }
@@ -154,7 +247,7 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
     return null
   }
 
-  async function handleCalculate() {
+  function handleCalculate() {
     const deviceInput = resolveDeviceInput()
 
     if (!deviceInput) {
@@ -163,132 +256,140 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
     }
 
     setShowError(false)
-    setIsLoading(true)
-    onLoadingChange?.(true)
 
-    try {
-      const result = await getAISensitivity({
-        deviceName: deviceInput.deviceName,
-        deviceDPI: deviceInput.dpi,
-        deviceType: deviceInput.deviceType ?? 'unknown',
-        playstyle: selectedPlaystyle,
-        experience,
-        preferredRange,
-        scopes,
-      })
-
-      onCalculate(result)
-    } catch {
-      setShowError(true)
-    } finally {
-      setIsLoading(false)
-      onLoadingChange?.(false)
-    }
+    onCalculateRequest({
+      deviceName: deviceInput.deviceName,
+      deviceDPI: deviceInput.dpi,
+      deviceType: deviceInput.deviceType ?? 'unknown',
+      playstyle: selectedPlaystyle,
+      experience,
+      preferredRange,
+      scopes,
+    })
   }
 
   const isDropdownVisible =
-    isInputFocused && searchQuery.length > 0 && showDropdown
+    isInputFocused && searchQuery.length > 0 && showDropdown && !manualOnly
 
   return (
     <div className="space-y-6">
-      {/* Section 1 — Device */}
       <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
         <label className="mb-3 block text-sm font-semibold text-white">
           Your Phone Model
         </label>
 
-        <div ref={dropdownRef} className="relative">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setSelectedDevice(null)
-                setShowDropdown(true)
-                clearError()
-              }}
-              onFocus={() => {
-                setIsInputFocused(true)
-                if (searchQuery.length > 0) {
+        {!manualOnly && (
+          <div ref={dropdownRef} className="relative">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setSelectedDevice(null)
                   setShowDropdown(true)
-                }
-              }}
-              placeholder="Search your phone model..."
-              disabled={isLoading}
-              className="w-full rounded-lg border border-[#333] bg-[#111111] py-3 pl-4 pr-10 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF] disabled:opacity-60"
-            />
+                  clearError()
+                }}
+                onFocus={() => {
+                  setIsInputFocused(true)
+                  if (searchQuery.length > 0) {
+                    setShowDropdown(true)
+                  }
+                }}
+                placeholder="Search your phone model..."
+                className="w-full rounded-lg border border-[#333] bg-[#111111] py-3 pl-4 pr-10 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+              />
 
-            {(selectedDevice || searchQuery) && (
-              <button
-                type="button"
-                onClick={handleClearSelection}
-                disabled={isLoading}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-white disabled:opacity-50"
-                aria-label="Clear selection"
-              >
-                ✕
-              </button>
+              {(selectedDevice || searchQuery) && (
+                <button
+                  type="button"
+                  onClick={handleClearSelection}
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-white"
+                  aria-label="Clear selection"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {isDropdownVisible && filteredDevices.length > 0 && (
+              <ul className="absolute z-20 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border border-[#333] bg-[#111111] shadow-lg">
+                {filteredDevices.map((device) => {
+                  const isSelected =
+                    selectedDevice?.brand === device.brand &&
+                    selectedDevice?.name === device.name
+
+                  return (
+                    <li key={`${device.brand}-${device.name}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectDevice(device)}
+                        className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-[#1a1a1a] ${
+                          isSelected
+                            ? 'border-l-2 border-l-[#00D4FF] bg-[#1a1a1a]'
+                            : 'border-l-2 border-l-transparent'
+                        }`}
+                      >
+                        <span className="text-white">
+                          {getDeviceDisplayName(device)}
+                        </span>
+                        <span className="ml-3 shrink-0 text-zinc-500">
+                          {device.dpi} DPI
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            {isDropdownVisible && filteredDevices.length === 0 && (
+              <p className="absolute z-20 mt-1 w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-sm text-zinc-400">
+                Phone not found? Use manual DPI below
+              </p>
             )}
           </div>
+        )}
 
-          {isDropdownVisible && filteredDevices.length > 0 && (
-            <ul className="absolute z-20 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border border-[#333] bg-[#111111] shadow-lg">
-              {filteredDevices.map((device) => {
-                const isSelected =
-                  selectedDevice?.brand === device.brand &&
-                  selectedDevice?.name === device.name
+        {selectedDevice && !manualOnly && (
+          <DeviceInfoCard
+            device={selectedDevice}
+            dpiOverride={dpiOverride}
+            customDPI={customDPI}
+            onToggleOverride={() => setDpiOverride((prev) => !prev)}
+            onCustomDPIChange={(value) => {
+              setCustomDPI(value)
+              clearError()
+            }}
+          />
+        )}
 
-                return (
-                  <li key={`${device.brand}-${device.name}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectDevice(device)}
-                      className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-[#1a1a1a] ${
-                        isSelected
-                          ? 'border-l-2 border-l-[#00D4FF] bg-[#1a1a1a]'
-                          : 'border-l-2 border-l-transparent'
-                      }`}
-                    >
-                      <span className="text-white">
-                        {getDeviceDisplayName(device)}
-                      </span>
-                      <span className="ml-3 shrink-0 text-zinc-500">
-                        {device.dpi} DPI
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+        {!selectedDevice && (
+          <button
+            type="button"
+            onClick={() => {
+              setManualOnly((prev) => !prev)
+              setSelectedDevice(null)
+              setSearchQuery('')
+              setDpiOverride(false)
+              setCustomDPI('')
+            }}
+            className="mt-4 cursor-pointer text-sm text-[#00D4FF] hover:underline"
+          >
+            📱 My phone isn&apos;t listed — enter DPI manually
+          </button>
+        )}
 
-          {isDropdownVisible && filteredDevices.length === 0 && (
-            <p className="absolute z-20 mt-1 w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-sm text-zinc-400">
-              Phone not found? Use manual DPI below
-            </p>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsManualDPIOpen((prev) => !prev)}
-          disabled={isLoading}
-          className="mt-4 cursor-pointer text-sm text-[#00D4FF] hover:underline disabled:opacity-50"
-        >
-          📱 My phone isn&apos;t listed — enter DPI manually
-        </button>
-
-        {isManualDPIOpen && (
+        {manualOnly && (
           <div className="mt-4">
             <label
-              htmlFor="manual-dpi"
+              htmlFor="manual-dpi-only"
               className="mb-2 block text-sm font-medium text-white"
             >
               Enter your phone&apos;s DPI
             </label>
             <input
-              id="manual-dpi"
+              id="manual-dpi-only"
               type="number"
               min="100"
               max="1200"
@@ -297,19 +398,23 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
                 setManualDPI(e.target.value)
                 clearError()
               }}
-              disabled={isLoading}
               placeholder="e.g. 400"
-              className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF] disabled:opacity-60"
+              className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
             />
-            <p className="mt-2 text-xs text-zinc-500">
-              Common DPI values: Budget phones 240-400 | Mid-range 400-800 |
-              Flagship 800-1200
-            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setManualOnly(false)
+                setManualDPI('')
+              }}
+              className="mt-2 text-xs text-zinc-500 hover:text-white"
+            >
+              ← Back to device search
+            </button>
           </div>
         )}
       </section>
 
-      {/* Section 2 — Pro player profiles */}
       <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
         <label className="mb-3 block text-sm font-semibold text-white">
           Your Playstyle
@@ -325,8 +430,7 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
                 key={profileId}
                 type="button"
                 onClick={() => setSelectedPlaystyle(profileId)}
-                disabled={isLoading}
-                className={`rounded-xl border p-4 text-left transition disabled:opacity-60 ${
+                className={`rounded-xl border p-4 text-left transition ${
                   isSelected
                     ? 'border-brand-yellow text-brand-yellow'
                     : 'border-brand-border text-white hover:border-zinc-600'
@@ -373,22 +477,13 @@ export default function SensitivityForm({ onCalculate, onLoadingChange }) {
         onChange={setScopes}
       />
 
-      {/* Calculate */}
       <div>
         <button
           type="button"
           onClick={handleCalculate}
-          disabled={isLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-yellow py-4 text-base font-bold text-black disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-xl bg-brand-yellow py-4 text-base font-bold text-black transition hover:bg-yellow-400"
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              🤖 AI Analyzing...
-            </>
-          ) : (
-            'Calculate My Sensitivity 🎯'
-          )}
+          Calculate My Sensitivity 🎯
         </button>
 
         {showError && (
