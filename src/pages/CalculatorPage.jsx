@@ -59,16 +59,49 @@ export default function CalculatorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-dark px-4 py-8 sm:py-10">
-      <div className="mx-auto w-full max-w-[600px]">
-        <header className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-white sm:text-3xl">
-            Sensitivity Calculator
+    <div className="min-h-screen bg-black px-4 pb-12">
+      <div className="mx-auto w-full max-w-[640px]">
+        <div style={{ textAlign: 'center', padding: '40px 0 20px' }}>
+          <div
+            style={{
+              display: 'inline-block',
+              background: 'rgba(0,246,255,0.05)',
+              border: '1px solid rgba(0,246,255,0.2)',
+              borderRadius: '100px',
+              padding: '6px 20px',
+              fontSize: '12px',
+              color: '#00F6FF',
+              letterSpacing: '0.15em',
+              marginBottom: '16px',
+            }}
+          >
+            ⚡ AI-POWERED SENSITIVITY ENGINE
+          </div>
+          <h1
+            style={{
+              fontSize: 'clamp(28px, 5vw, 48px)',
+              fontWeight: 800,
+              color: 'white',
+              marginBottom: '8px',
+            }}
+          >
+            Find Your Perfect
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #00F6FF, #0044FF)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              {' '}
+              Sensitivity
+            </span>
           </h1>
-          <p className="mt-2 text-sm text-zinc-400 sm:text-base">
-            Find your perfect settings in seconds
+          <p style={{ color: '#64748b', fontSize: '16px' }}>
+            Analyzed from world&apos;s best Free Fire players
           </p>
-        </header>
+        </div>
 
         {!isCalculating && (
           <SensitivityForm onCalculateRequest={handleCalculateRequest} />

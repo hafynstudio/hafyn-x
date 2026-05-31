@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
+import HafynLogo from '../components/brand/HafynLogo'
 
 const PRO_PLAYERS = [
   {
@@ -11,9 +12,9 @@ const PRO_PLAYERS = [
   },
   {
     name: 'ZeroX FF',
-    tag: 'Nepal • Scope Rush',
+    tag: 'Nepal • Freestyle',
     stat: '4x Scope: 185',
-    description: "Nepal's most dominant scope rusher",
+    description: "Nepal's most aggressive and best freestyle player",
     icon: '🔭',
   },
   {
@@ -150,17 +151,6 @@ const MARQUEE_ROW_2 = [
   'Redmi Note',
   'POCO F Series',
 ]
-
-function Logo({ className = '' }) {
-  return (
-    <span
-      className={`font-logo text-xl font-bold tracking-widest ${className}`}
-    >
-      <span className="text-white">HAFYN</span>
-      <span className="text-[#00F6FF]"> X</span>
-    </span>
-  )
-}
 
 function GradientText({ children, className = '' }) {
   return (
@@ -457,7 +447,7 @@ export default function HomePage() {
       <footer className="border-t border-[#111111] bg-black px-4 py-16">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 md:grid-cols-3">
           <div>
-            <Logo />
+            <HafynLogo />
             <p className="mt-4 text-sm leading-relaxed text-[#94A3B8]">
               The most advanced Free Fire sensitivity calculator in South Asia
             </p>

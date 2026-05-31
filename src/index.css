@@ -27,6 +27,69 @@ body {
   background: #111;
 }
 ::-webkit-scrollbar-thumb {
-  background: #EAB308;
+  background: #00f6ff;
   border-radius: 3px;
+}
+
+/* HAFYN X logo glow */
+@keyframes hafynPulse {
+  0%,
+  100% {
+    text-shadow: 0 0 20px #00f6ff, 0 0 40px #00f6ff;
+    opacity: 1;
+  }
+  50% {
+    text-shadow: 0 0 30px #00f6ff, 0 0 80px #00f6ff, 0 0 100px #00f6ff;
+    opacity: 0.9;
+  }
+}
+
+.hafyn-logo-x {
+  color: #00f6ff;
+  text-shadow: 0 0 20px #00f6ff, 0 0 60px #00f6ff;
+  animation: hafynPulse 2s ease-in-out infinite;
+}
+
+/* Entrance animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease forwards;
 }

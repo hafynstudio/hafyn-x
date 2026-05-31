@@ -25,6 +25,24 @@ const SCOPE_OPTIONS = [
   { id: 'always', label: 'Always', description: 'Scope everything' },
 ]
 
+const SECTION_CARD =
+  'rounded-2xl border border-white/[0.06] p-6 mb-4 backdrop-blur-[20px] animate-fadeInUp opacity-0'
+const SECTION_BG = { background: 'rgba(10, 11, 20, 0.8)' }
+
+const INPUT_CLASS =
+  'w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-[15px] text-white outline-none transition-all duration-200 placeholder:text-[#64748b] focus:border-[#00F6FF] focus:shadow-[0_0_0_3px_rgba(0,246,255,0.1)]'
+
+function SectionLabel({ children }) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <span className="h-px w-4 bg-[#00F6FF]/50" aria-hidden />
+      <span className="text-xs font-semibold uppercase tracking-widest text-[#00F6FF]">
+        {children}
+      </span>
+    </div>
+  )
+}
+
 function getDeviceDisplayName(device) {
   return `${device.brand} ${device.name}`
 }
@@ -40,35 +58,29 @@ function getTierBadgeLabel(device) {
   return tierLabels[device.tier] || device.tier
 }
 
-function OptionCards({ label, options, value, onChange, disabled }) {
+function SmallOptionCards({ label, options, value, onChange, delay = '0s' }) {
   return (
-    <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
-      <label className="mb-3 block text-sm font-semibold text-white">
-        {label}
-      </label>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <section
+      className={SECTION_CARD}
+      style={{ ...SECTION_BG, animationDelay: delay }}
+    >
+      <SectionLabel>{label}</SectionLabel>
+      <div className="grid grid-cols-2 gap-2">
         {options.map((option) => {
           const isSelected = value === option.id
           return (
             <button
               key={option.id}
               type="button"
-              disabled={disabled}
               onClick={() => onChange(option.id)}
-              className={`rounded-xl border p-3 text-left transition disabled:opacity-60 ${
+              className={`rounded-[14px] border p-3.5 text-left transition-all duration-200 ${
                 isSelected
-                  ? 'border-brand-yellow text-brand-yellow'
-                  : 'border-brand-border text-white hover:border-zinc-600'
+                  ? 'border-[#00F6FF]/40 bg-[#00F6FF]/[0.08] shadow-[0_0_20px_rgba(0,246,255,0.1)]'
+                  : 'border-white/[0.06] bg-white/[0.02] hover:border-white/10'
               }`}
             >
-              <p className="text-sm font-semibold">{option.label}</p>
-              <p
-                className={`mt-0.5 text-xs ${
-                  isSelected ? 'text-brand-yellow/80' : 'text-zinc-400'
-                }`}
-              >
-                {option.description}
-              </p>
+              <p className="text-sm font-bold text-white">{option.label}</p>
+              <p className="mt-0.5 text-xs text-[#64748b]">{option.description}</p>
             </button>
           )
         })}
@@ -77,43 +89,53 @@ function OptionCards({ label, options, value, onChange, disabled }) {
   )
 }
 
-function DeviceInfoCard({ device, dpiOverride, customDPI, onToggleOverride, onCustomDPIChange }) {
+function DeviceInfoCard({
+  device,
+  dpiOverride,
+  customDPI,
+  onToggleOverride,
+  onCustomDPIChange,
+}) {
   const displayDpi =
     dpiOverride && customDPI ? Number(customDPI) : device.dpi
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="rounded-xl border border-[#333] bg-[#111111] p-4">
+      <div
+        className="rounded-xl border border-white/[0.06] p-4"
+        style={{ background: 'rgba(255,255,255,0.02)' }}
+      >
         <div className="flex items-start gap-3">
           <span className="text-2xl" aria-hidden>
             📱
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-white">
-              {getDeviceDisplayName(device)}
-            </p>
-            <p className="mt-1 text-sm text-[#00D4FF]">
+            <p className="font-bold text-white">{getDeviceDisplayName(device)}</p>
+            <p className="mt-1 text-sm text-[#00F6FF]">
               Detected DPI: {displayDpi}
             </p>
-            <span className="mt-2 inline-block rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-semibold text-zinc-300">
+            <span className="mt-2 inline-block rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-[#94A3B8]">
               {getTierBadgeLabel(device)}
             </span>
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-[#64748b]">
               DPI affects your sensitivity calculation
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-brand-border bg-brand-card px-4 py-3">
-        <span className="text-sm text-zinc-300">⚙️ Override DPI manually</span>
+      <div
+        className="flex items-center justify-between rounded-xl border border-white/[0.06] px-4 py-3"
+        style={{ background: 'rgba(255,255,255,0.02)' }}
+      >
+        <span className="text-sm text-[#94A3B8]">⚙️ Override DPI manually</span>
         <button
           type="button"
           role="switch"
           aria-checked={dpiOverride}
           onClick={onToggleOverride}
           className={`relative h-7 w-12 shrink-0 rounded-full transition ${
-            dpiOverride ? 'bg-[#00D4FF]' : 'bg-brand-border'
+            dpiOverride ? 'bg-[#00F6FF]' : 'bg-white/10'
           }`}
         >
           <span
@@ -128,7 +150,7 @@ function DeviceInfoCard({ device, dpiOverride, customDPI, onToggleOverride, onCu
         <div>
           <label
             htmlFor="custom-dpi-override"
-            className="mb-2 block text-sm font-medium text-white"
+            className="mb-2 block text-sm text-[#94A3B8]"
           >
             Enter Custom DPI
           </label>
@@ -140,9 +162,9 @@ function DeviceInfoCard({ device, dpiOverride, customDPI, onToggleOverride, onCu
             value={customDPI}
             onChange={(e) => onCustomDPIChange(e.target.value)}
             placeholder="e.g. 520"
-            className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+            className={INPUT_CLASS}
           />
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-[#64748b]">
             Your phone&apos;s actual DPI if you know it
           </p>
         </div>
@@ -233,7 +255,10 @@ export default function SensitivityForm({ onCalculateRequest }) {
     if (selectedDevice) {
       const parsedOverride = Number(customDPI)
       const dpi =
-        dpiOverride && customDPI && parsedOverride >= 100 && parsedOverride <= 1200
+        dpiOverride &&
+        customDPI &&
+        parsedOverride >= 100 &&
+        parsedOverride <= 1200
           ? parsedOverride
           : selectedDevice.dpi
 
@@ -272,11 +297,12 @@ export default function SensitivityForm({ onCalculateRequest }) {
     isInputFocused && searchQuery.length > 0 && showDropdown && !manualOnly
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
-        <label className="mb-3 block text-sm font-semibold text-white">
-          Your Phone Model
-        </label>
+    <div>
+      <section
+        className={SECTION_CARD}
+        style={{ ...SECTION_BG, animationDelay: '0.05s' }}
+      >
+        <SectionLabel>Your Phone Model</SectionLabel>
 
         {!manualOnly && (
           <div ref={dropdownRef} className="relative">
@@ -292,19 +318,17 @@ export default function SensitivityForm({ onCalculateRequest }) {
                 }}
                 onFocus={() => {
                   setIsInputFocused(true)
-                  if (searchQuery.length > 0) {
-                    setShowDropdown(true)
-                  }
+                  if (searchQuery.length > 0) setShowDropdown(true)
                 }}
                 placeholder="Search your phone model..."
-                className="w-full rounded-lg border border-[#333] bg-[#111111] py-3 pl-4 pr-10 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+                className={INPUT_CLASS}
               />
 
               {(selectedDevice || searchQuery) && (
                 <button
                   type="button"
                   onClick={handleClearSelection}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-white"
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748b] hover:text-white"
                   aria-label="Clear selection"
                 >
                   ✕
@@ -313,38 +337,37 @@ export default function SensitivityForm({ onCalculateRequest }) {
             </div>
 
             {isDropdownVisible && filteredDevices.length > 0 && (
-              <ul className="absolute z-20 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border border-[#333] bg-[#111111] shadow-lg">
-                {filteredDevices.map((device) => {
-                  const isSelected =
-                    selectedDevice?.brand === device.brand &&
-                    selectedDevice?.name === device.name
-
-                  return (
-                    <li key={`${device.brand}-${device.name}`}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectDevice(device)}
-                        className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-[#1a1a1a] ${
-                          isSelected
-                            ? 'border-l-2 border-l-[#00D4FF] bg-[#1a1a1a]'
-                            : 'border-l-2 border-l-transparent'
-                        }`}
-                      >
-                        <span className="text-white">
-                          {getDeviceDisplayName(device)}
-                        </span>
-                        <span className="ml-3 shrink-0 text-zinc-500">
-                          {device.dpi} DPI
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
+              <ul
+                className="absolute z-20 mt-2 max-h-[220px] w-full overflow-y-auto rounded-xl border border-white/[0.08]"
+                style={{ background: '#0a0b14' }}
+              >
+                {filteredDevices.map((device) => (
+                  <li key={`${device.brand}-${device.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectDevice(device)}
+                      className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-[#00F6FF]/5"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {device.name}
+                        </p>
+                        <p className="text-xs text-[#64748b]">{device.brand}</p>
+                      </div>
+                      <span className="shrink-0 text-xs text-[#00F6FF]">
+                        {device.dpi} DPI
+                      </span>
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
 
             {isDropdownVisible && filteredDevices.length === 0 && (
-              <p className="absolute z-20 mt-1 w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-sm text-zinc-400">
+              <p
+                className="absolute z-20 mt-2 w-full rounded-xl border border-white/[0.08] px-4 py-3 text-sm text-[#64748b]"
+                style={{ background: '#0a0b14' }}
+              >
                 Phone not found? Use manual DPI below
               </p>
             )}
@@ -374,7 +397,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
               setDpiOverride(false)
               setCustomDPI('')
             }}
-            className="mt-4 cursor-pointer text-sm text-[#00D4FF] hover:underline"
+            className="mt-4 text-sm text-[#00F6FF] transition hover:underline"
           >
             📱 My phone isn&apos;t listed — enter DPI manually
           </button>
@@ -384,7 +407,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
           <div className="mt-4">
             <label
               htmlFor="manual-dpi-only"
-              className="mb-2 block text-sm font-medium text-white"
+              className="mb-2 block text-sm text-[#94A3B8]"
             >
               Enter your phone&apos;s DPI
             </label>
@@ -399,7 +422,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
                 clearError()
               }}
               placeholder="e.g. 400"
-              className="w-full rounded-lg border border-[#333] bg-[#111111] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+              className={INPUT_CLASS}
             />
             <button
               type="button"
@@ -407,7 +430,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
                 setManualOnly(false)
                 setManualDPI('')
               }}
-              className="mt-2 text-xs text-zinc-500 hover:text-white"
+              className="mt-2 text-xs text-[#64748b] hover:text-white"
             >
               ← Back to device search
             </button>
@@ -415,12 +438,13 @@ export default function SensitivityForm({ onCalculateRequest }) {
         )}
       </section>
 
-      <section className="rounded-xl border border-brand-border bg-brand-card p-4 sm:p-5">
-        <label className="mb-3 block text-sm font-semibold text-white">
-          Your Playstyle
-        </label>
+      <section
+        className={SECTION_CARD}
+        style={{ ...SECTION_BG, animationDelay: '0.15s' }}
+      >
+        <SectionLabel>Your Playstyle</SectionLabel>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           {PROFILE_IDS.map((profileId) => {
             const profile = PLAYER_PROFILES[profileId]
             const isSelected = selectedPlaystyle === profileId
@@ -430,24 +454,20 @@ export default function SensitivityForm({ onCalculateRequest }) {
                 key={profileId}
                 type="button"
                 onClick={() => setSelectedPlaystyle(profileId)}
-                className={`rounded-xl border p-4 text-left transition ${
+                className={`cursor-pointer rounded-[14px] border p-[18px] text-left transition-all duration-200 ${
                   isSelected
-                    ? 'border-brand-yellow text-brand-yellow'
-                    : 'border-brand-border text-white hover:border-zinc-600'
+                    ? 'border-[#00F6FF]/40 bg-[#00F6FF]/[0.08] shadow-[0_0_20px_rgba(0,246,255,0.1)]'
+                    : 'border-white/[0.06] bg-white/[0.02] hover:border-white/10'
                 }`}
               >
-                <span className="text-2xl" role="img" aria-hidden>
+                <span className="mb-2 block text-2xl" role="img" aria-hidden>
                   {profile.icon}
                 </span>
-                <p className="mt-2 text-sm font-semibold">{profile.name}</p>
-                <p
-                  className={`mt-1 text-xs leading-relaxed ${
-                    isSelected ? 'text-brand-yellow/80' : 'text-zinc-400'
-                  }`}
-                >
+                <p className="text-[15px] font-bold text-white">{profile.name}</p>
+                <p className="mt-1 text-[13px] text-[#64748b]">
                   {profile.description}
                 </p>
-                <p className="mt-2 text-xs text-[#00D4FF]">
+                <p className="mt-2 text-xs text-[#00F6FF]">
                   Like: {profile.proPlayer}
                 </p>
               </button>
@@ -456,38 +476,48 @@ export default function SensitivityForm({ onCalculateRequest }) {
         </div>
       </section>
 
-      <OptionCards
+      <SmallOptionCards
         label="Experience Level"
         options={EXPERIENCE_OPTIONS}
         value={experience}
         onChange={setExperience}
+        delay="0.25s"
       />
 
-      <OptionCards
+      <SmallOptionCards
         label="Preferred Range"
         options={RANGE_OPTIONS}
         value={preferredRange}
         onChange={setPreferredRange}
+        delay="0.35s"
       />
 
-      <OptionCards
+      <SmallOptionCards
         label="Scope Usage"
         options={SCOPE_OPTIONS}
         value={scopes}
         onChange={setScopes}
+        delay="0.45s"
       />
 
-      <div>
+      <div
+        className="animate-fadeInUp opacity-0"
+        style={{ animationDelay: '0.55s' }}
+      >
         <button
           type="button"
           onClick={handleCalculate}
-          className="w-full rounded-xl bg-brand-yellow py-4 text-base font-bold text-black transition hover:bg-yellow-400"
+          className="w-full cursor-pointer rounded-[14px] border-none py-[18px] text-lg font-extrabold tracking-wide text-black transition-all duration-300 active:translate-y-0 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_8px_30px_rgba(0,246,255,0.3)]"
+          style={{
+            background: 'linear-gradient(135deg, #00F6FF 0%, #0044FF 100%)',
+            letterSpacing: '0.05em',
+          }}
         >
-          Calculate My Sensitivity 🎯
+          Calculate My Sensitivity →
         </button>
 
         {showError && (
-          <p className="mt-3 text-center text-sm text-red-500">
+          <p className="mt-3 text-center text-sm text-red-400">
             ⚠️ Please select your phone or enter your DPI to continue
           </p>
         )}

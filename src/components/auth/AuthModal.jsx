@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
+import HafynLogo from '../brand/HafynLogo'
 
 export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
+  const { refreshProfile } = useAuth()
   const [activeTab, setActiveTab] = useState(defaultTab)
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -14,6 +18,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
     if (isOpen) {
       setActiveTab(defaultTab)
       setEmail('')
+      setUsername('')
       setPassword('')
       setError('')
       setSuccessMessage('')
@@ -47,6 +52,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
       return
     }
 
+    await refreshProfile?.()
     onClose()
   }
 
@@ -56,22 +62,36 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
     setError('')
     setSuccessMessage('')
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     })
 
-    setLoading(false)
-
     if (signUpError) {
+      setLoading(false)
       setError(signUpError.message)
       return
     }
 
+    if (data.user && username.trim()) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ username: username.trim() })
+        .eq('id', data.user.id)
+
+      if (profileError) {
+        setLoading(false)
+        setError(profileError.message)
+        return
+      }
+    }
+
+    setLoading(false)
     setSuccessMessage('Check your email to confirm account')
   }
 
   async function handleSubmit(event) {
+    event.preventDefault()
     if (activeTab === 'login') {
       await handleLogin(event)
     } else {
@@ -98,20 +118,17 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
           <X className="h-5 w-5" />
         </button>
 
-        <div className="mb-6 text-center">
-          <p className="font-logo text-xl font-bold tracking-widest">
-            <span className="text-white">HAFYN</span>
-            <span className="text-[#00D4FF]"> X</span>
-          </p>
+        <div className="mb-6 flex justify-center">
+          <HafynLogo />
         </div>
 
         <div className="mb-6 flex rounded-lg border border-[#333] bg-[#0a0a0a] p-1">
           <button
             type="button"
             onClick={() => switchTab('login')}
-            className={`flex-1 rounded-md py-2 text-sm font-semibold ${
+            className={`flex-1 rounded-md py-2 text-sm font-semibold transition ${
               activeTab === 'login'
-                ? 'bg-[#F59E0B] text-black'
+                ? 'bg-gradient-to-r from-[#00F6FF] to-[#0044FF] text-black'
                 : 'text-zinc-400'
             }`}
           >
@@ -120,9 +137,9 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
           <button
             type="button"
             onClick={() => switchTab('signup')}
-            className={`flex-1 rounded-md py-2 text-sm font-semibold ${
+            className={`flex-1 rounded-md py-2 text-sm font-semibold transition ${
               activeTab === 'signup'
-                ? 'bg-[#F59E0B] text-black'
+                ? 'bg-gradient-to-r from-[#00F6FF] to-[#0044FF] text-black'
                 : 'text-zinc-400'
             }`}
           >
@@ -132,7 +149,10 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="auth-email" className="mb-2 block text-sm text-zinc-300">
+            <label
+              htmlFor="auth-email"
+              className="mb-2 block text-sm text-zinc-300"
+            >
               Email
             </label>
             <input
@@ -141,10 +161,30 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-[#333] bg-[#0a0a0a] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+              className="w-full rounded-lg border border-[#333] bg-[#0a0a0a] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00F6FF] focus:outline-none focus:ring-1 focus:ring-[#00F6FF]"
               placeholder="you@email.com"
             />
           </div>
+
+          {activeTab === 'signup' && (
+            <div>
+              <label
+                htmlFor="auth-username"
+                className="mb-2 block text-sm text-zinc-300"
+              >
+                Username
+              </label>
+              <input
+                id="auth-username"
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full rounded-lg border border-[#333] bg-[#0a0a0a] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00F6FF] focus:outline-none focus:ring-1 focus:ring-[#00F6FF]"
+                placeholder="Your in-game name"
+              />
+            </div>
+          )}
 
           <div>
             <label
@@ -160,23 +200,21 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-[#333] bg-[#0a0a0a] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00D4FF] focus:outline-none focus:ring-1 focus:ring-[#00D4FF]"
+              className="w-full rounded-lg border border-[#333] bg-[#0a0a0a] px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#00F6FF] focus:outline-none focus:ring-1 focus:ring-[#00F6FF]"
               placeholder="••••••••"
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-500">{error}</p>}
 
           {successMessage && (
-            <p className="text-sm text-[#F59E0B]">{successMessage}</p>
+            <p className="text-sm text-[#00F6FF]">{successMessage}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-[#F59E0B] py-3 text-sm font-bold text-black disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-gradient-to-r from-[#00F6FF] to-[#0044FF] py-3 text-sm font-bold text-black disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading
               ? 'Please wait...'
@@ -193,7 +231,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
               <button
                 type="button"
                 onClick={() => switchTab('signup')}
-                className="text-[#00D4FF] hover:underline"
+                className="text-[#00F6FF] hover:underline"
               >
                 Sign Up
               </button>
@@ -204,7 +242,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = 'login' }) {
               <button
                 type="button"
                 onClick={() => switchTab('login')}
-                className="text-[#00D4FF] hover:underline"
+                className="text-[#00F6FF] hover:underline"
               >
                 Login
               </button>
