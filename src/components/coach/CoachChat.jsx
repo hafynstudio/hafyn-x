@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useSubscription } from '../../hooks/useSubscription'
 import { supabase } from '../../lib/supabase'
-import { getCoachChatResponse } from '../../lib/groqAI'
+import { sendChatMessage } from '../../lib/groqAI'
 import AuthModal from '../auth/AuthModal'
 import costaLogo from '../../assets/costa-logo.png'
 
@@ -18,6 +18,11 @@ const INITIAL_MESSAGE = {
   content:
     "Hey! 👋 I'm your HAFYN X sensitivity coach. Ask me anything about your Free Fire settings, sensitivity adjustments, or gameplay tips!",
 }
+
+const COACH_SYSTEM_PROMPT = `You are HAFYN X, an elite Free Fire sensitivity coach made by Costa Gamerz Pakistan.
+Help with sensitivity settings and gameplay.
+Be friendly, short (2-3 sentences), and speak like a pro South Asian gamer.
+Never say you cannot help with Free Fire topics.`
 
 function loadUsageFromStorage() {
   const now = Date.now()
@@ -127,10 +132,21 @@ export default function CoachChat() {
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map(({ role, content }) => ({ role, content }))
 
-    const reply = await getCoachChatResponse(apiMessages)
+    const reply = await sendChatMessage(apiMessages, COACH_SYSTEM_PROMPT)
 
     setIsTyping(false)
-    setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+
+    if (!reply) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, connection issue. Please try again!',
+        },
+      ])
+    } else {
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+    }
 
     if (!isPro) {
       const newCount = incrementUsageCount()
@@ -246,27 +262,27 @@ export default function CoachChat() {
             {isTyping && (
               <div
                 style={{
-                  alignSelf: 'flex-start',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '18px 18px 18px 4px',
+                  display: 'flex',
+                  gap: '4px',
                   padding: '12px 16px',
+                  background: 'rgba(255,255,255,0.05)',
+                  borderRadius: '18px 18px 18px 4px',
+                  width: 'fit-content',
+                  alignSelf: 'flex-start',
                 }}
               >
-                <div className="flex gap-1">
-                  <span
-                    className="coach-typing-dot inline-block h-2 w-2 rounded-full bg-[#64748b]"
-                    style={{ animationDelay: '0ms' }}
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#00F6FF',
+                      animation: `bounce 1s ease-in-out ${i * 0.2}s infinite`,
+                    }}
                   />
-                  <span
-                    className="coach-typing-dot inline-block h-2 w-2 rounded-full bg-[#64748b]"
-                    style={{ animationDelay: '150ms' }}
-                  />
-                  <span
-                    className="coach-typing-dot inline-block h-2 w-2 rounded-full bg-[#64748b]"
-                    style={{ animationDelay: '300ms' }}
-                  />
-                </div>
+                ))}
               </div>
             )}
             <div ref={chatEndRef} />
