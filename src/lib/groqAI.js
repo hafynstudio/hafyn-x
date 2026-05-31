@@ -184,6 +184,49 @@ function extractNumber(line) {
   return 0
 }
 
+const COACH_SYSTEM_PROMPT = `You are HAFYN X, an elite Free Fire sensitivity coach created by Costa Gamerz.
+You help players with sensitivity settings, aim improvement, and gameplay tips.
+Keep responses short (2-4 sentences max).
+Be friendly, knowledgeable, and sound like a pro Free Fire player.
+Always relate advice to Free Fire specifically.`
+
+export async function getCoachChatResponse(conversationMessages) {
+  try {
+    const response = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          messages: [
+            { role: 'system', content: COACH_SYSTEM_PROMPT },
+            ...conversationMessages.map(({ role, content }) => ({
+              role,
+              content,
+            })),
+          ],
+          temperature: 0.7,
+          max_tokens: 200,
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error('Groq API failed')
+    }
+
+    const data = await response.json()
+    return data.choices[0].message.content.trim()
+  } catch (error) {
+    console.error('Coach chat error:', error)
+    return "I'm having trouble connecting right now. Try again in a moment — or head to the calculator for instant sensitivity settings!"
+  }
+}
+
 function getFallbackSensitivity(playstyle, deviceDPI, deviceType) {
   const bases = {
     freestyle_speedster: { G: 178, RD: 170, x2: 172, x4: 165, SNP: 65, FL: 144 },

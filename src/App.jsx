@@ -4,6 +4,7 @@ import Navbar from './components/layout/Navbar'
 import CalculatorPage from './pages/CalculatorPage'
 import HomePage from './pages/HomePage'
 import PricingPage from './pages/PricingPage'
+import CoachChat from './components/coach/CoachChat'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/pro" element={<PricingPage />} />
           </Routes>
+          <CoachChat />
         </div>
       </BrowserRouter>
     </AuthProvider>
