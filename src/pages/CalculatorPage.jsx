@@ -9,7 +9,7 @@ import CalculatingScreen, {
 const INITIAL_CALC_STATE = {
   stepIndex: 0,
   progress: 0,
-  title: '🔍 Analyzing your device profile...',
+  title: 'HAFYN X is analyzing your device profile...',
   subtitle: 'Reading DPI, device type, and hardware profile',
   isFinalizing: false,
 }
@@ -17,8 +17,8 @@ const INITIAL_CALC_STATE = {
 const FINALIZING_STATE = {
   stepIndex: 5,
   progress: 100,
-  title: '⏳ Finalizing...',
-  subtitle: 'Waiting for AI to finish your personalized settings',
+  title: 'HAFYN X is finalizing your settings...',
+  subtitle: 'Waiting for HAFYN X AI to finish your personalized settings',
   isFinalizing: true,
 }
 

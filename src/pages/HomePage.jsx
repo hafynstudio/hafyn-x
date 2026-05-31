@@ -451,9 +451,40 @@ export default function HomePage() {
             <p className="mt-4 text-sm leading-relaxed text-[#94A3B8]">
               The most advanced Free Fire sensitivity calculator in South Asia
             </p>
-            <p className="mt-3 text-sm font-medium text-[#00F6FF]">
-              🎮 Developed by COSTA GAMERZ
-            </p>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginTop: '12px',
+              }}
+            >
+              <img
+                src="/costa-logo.png"
+                alt="Costa Gamerz"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  border: '2px solid rgba(0,246,255,0.3)',
+                  boxShadow: '0 0 15px rgba(0,246,255,0.2)',
+                }}
+              />
+              <div>
+                <div
+                  style={{
+                    color: '#00F6FF',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                  }}
+                >
+                  COSTA GAMERZ
+                </div>
+                <div style={{ color: '#475569', fontSize: '12px' }}>
+                  Developer & Creator
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>

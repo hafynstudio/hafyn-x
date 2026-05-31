@@ -185,10 +185,32 @@ export default function SensitivityForm({ onCalculateRequest }) {
   const [scopes, setScopes] = useState('sometimes')
   const [searchQuery, setSearchQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isInputFocused, setIsInputFocused] = useState(false)
   const [showError, setShowError] = useState(false)
 
   const dropdownRef = useRef(null)
+
+  function closeDropdown() {
+    setShowDropdown(false)
+    setIsInputFocused(false)
+    setIsDropdownOpen(false)
+  }
+
+  const blurredSectionStyle = isDropdownOpen
+    ? {
+        filter: 'blur(3px)',
+        opacity: 0.4,
+        pointerEvents: 'none',
+        transition: 'all 0.3s ease',
+        userSelect: 'none',
+      }
+    : {
+        filter: 'blur(0px)',
+        opacity: 1,
+        pointerEvents: 'all',
+        transition: 'all 0.3s ease',
+      }
 
   const filteredDevices = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -206,8 +228,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target)
       ) {
-        setShowDropdown(false)
-        setIsInputFocused(false)
+        closeDropdown()
       }
     }
 
@@ -223,8 +244,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
     setSelectedDevice(device)
     setManualOnly(false)
     setSearchQuery(getDeviceDisplayName(device))
-    setShowDropdown(false)
-    setIsInputFocused(false)
+    closeDropdown()
     setDpiOverride(false)
     setCustomDPI('')
     clearError()
@@ -233,7 +253,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
   function handleClearSelection() {
     setSelectedDevice(null)
     setSearchQuery('')
-    setShowDropdown(false)
+    closeDropdown()
     setDpiOverride(false)
     setCustomDPI('')
     clearError()
@@ -297,28 +317,45 @@ export default function SensitivityForm({ onCalculateRequest }) {
     isInputFocused && searchQuery.length > 0 && showDropdown && !manualOnly
 
   return (
-    <div>
+    <div className="relative">
+      {isDropdownOpen && (
+        <div
+          className="fixed inset-0 z-10"
+          style={{ background: 'transparent' }}
+          onClick={closeDropdown}
+          onKeyDown={() => {}}
+          role="presentation"
+          aria-hidden
+        />
+      )}
+
       <section
-        className={SECTION_CARD}
+        className={`${SECTION_CARD} relative z-50`}
         style={{ ...SECTION_BG, animationDelay: '0.05s' }}
       >
         <SectionLabel>Your Phone Model</SectionLabel>
 
         {!manualOnly && (
-          <div ref={dropdownRef} className="relative">
+          <div ref={dropdownRef} className="relative z-50">
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value)
+                  const value = e.target.value
+                  setSearchQuery(value)
                   setSelectedDevice(null)
                   setShowDropdown(true)
+                  setIsInputFocused(true)
+                  setIsDropdownOpen(value.trim().length > 0)
                   clearError()
                 }}
                 onFocus={() => {
                   setIsInputFocused(true)
-                  if (searchQuery.length > 0) setShowDropdown(true)
+                  if (searchQuery.trim().length > 0) {
+                    setShowDropdown(true)
+                    setIsDropdownOpen(true)
+                  }
                 }}
                 placeholder="Search your phone model..."
                 className={INPUT_CLASS}
@@ -338,7 +375,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
 
             {isDropdownVisible && filteredDevices.length > 0 && (
               <ul
-                className="absolute z-20 mt-2 max-h-[220px] w-full overflow-y-auto rounded-xl border border-white/[0.08]"
+                className="absolute z-50 mt-2 max-h-[220px] w-full overflow-y-auto rounded-xl border border-white/[0.08]"
                 style={{ background: '#0a0b14' }}
               >
                 {filteredDevices.map((device) => (
@@ -365,7 +402,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
 
             {isDropdownVisible && filteredDevices.length === 0 && (
               <p
-                className="absolute z-20 mt-2 w-full rounded-xl border border-white/[0.08] px-4 py-3 text-sm text-[#64748b]"
+                className="absolute z-50 mt-2 w-full rounded-xl border border-white/[0.08] px-4 py-3 text-sm text-[#64748b]"
                 style={{ background: '#0a0b14' }}
               >
                 Phone not found? Use manual DPI below
@@ -438,6 +475,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
         )}
       </section>
 
+      <div style={blurredSectionStyle}>
       <section
         className={SECTION_CARD}
         style={{ ...SECTION_BG, animationDelay: '0.15s' }}
@@ -521,6 +559,7 @@ export default function SensitivityForm({ onCalculateRequest }) {
             ⚠️ Please select your phone or enter your DPI to continue
           </p>
         )}
+      </div>
       </div>
     </div>
   )

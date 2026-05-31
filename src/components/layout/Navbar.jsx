@@ -3,7 +3,44 @@ import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import AuthModal from '../auth/AuthModal'
-import HafynLogo from '../brand/HafynLogo'
+
+function NavbarLogo() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <img
+        src="/hafynx-logo.png"
+        alt="HAFYN X"
+        style={{
+          height: '36px',
+          width: '36px',
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 0 8px rgba(0,246,255,0.6))',
+        }}
+      />
+      <span
+        style={{
+          fontWeight: 800,
+          fontSize: '20px',
+          letterSpacing: '0.15em',
+          color: 'white',
+        }}
+      >
+        HAFYN
+        <span
+          className="hafyn-logo-x"
+          style={{
+            color: '#00F6FF',
+            textShadow: '0 0 20px #00F6FF, 0 0 40px #00F6FF',
+            animation: 'hafynPulse 2s ease-in-out infinite',
+          }}
+        >
+          {' '}
+          X
+        </span>
+      </span>
+    </div>
+  )
+}
 
 const SOON_BADGE = (
   <span className="ml-1 rounded-full border border-[#00F6FF]/30 bg-[#00F6FF]/10 px-2 py-0.5 text-[10px] font-semibold text-[#00F6FF]">
@@ -64,7 +101,7 @@ export default function Navbar() {
       >
         <nav className="mx-auto flex h-[60px] max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="opacity-95 transition-opacity hover:opacity-100">
-            <HafynLogo />
+            <NavbarLogo />
           </Link>
 
           <div className="hidden items-center gap-6 md:flex">

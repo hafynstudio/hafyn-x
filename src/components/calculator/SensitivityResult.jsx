@@ -4,12 +4,12 @@ import { Clipboard } from 'lucide-react'
 const MAX_SENSITIVITY = 200
 
 const SETTINGS = [
-  { key: 'general', label: 'General', color: '#00F6FF' },
-  { key: 'redDot', label: 'Red Dot', color: '#FF4444' },
-  { key: 'x2Scope', label: '2x Scope', color: '#8B5CF6' },
-  { key: 'x4Scope', label: '4x Scope', color: '#F59E0B' },
-  { key: 'sniper', label: 'Sniper', color: '#10B981' },
-  { key: 'freeLook', label: 'Free Look', color: '#EC4899' },
+  { key: 'general', label: 'General' },
+  { key: 'redDot', label: 'Red Dot' },
+  { key: 'x2Scope', label: '2x Scope' },
+  { key: 'x4Scope', label: '4x Scope' },
+  { key: 'sniper', label: 'Sniper' },
+  { key: 'freeLook', label: 'Free Look' },
 ]
 
 function buildCopyText(result) {
@@ -27,35 +27,38 @@ hafynx.com`
 }
 
 function SensitivityCard({ setting, value, index, animateBars }) {
+  const [hovered, setHovered] = useState(false)
   const barWidth = (value / MAX_SENSITIVITY) * 100
 
   return (
     <div
-      className="animate-fadeInUp relative overflow-hidden rounded-2xl border border-white/[0.06] px-4 py-5 text-center opacity-0"
+      className="animate-fadeInUp relative overflow-hidden rounded-2xl border px-4 py-5 text-center opacity-0 transition-all duration-300"
       style={{
         background: 'rgba(10,11,20,0.9)',
-        animationDelay: `${0.1 + index * 0.1}s`,
+        borderColor: hovered ? 'rgba(0,246,255,0.3)' : 'rgba(255,255,255,0.06)',
+        boxShadow: hovered
+          ? '0 0 30px rgba(0,246,255,0.15), inset 0 0 30px rgba(0,246,255,0.03)'
+          : 'none',
+        animationDelay: `${index * 0.1}s`,
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <div
         className="absolute left-0 right-0 top-0 h-0.5"
         style={{
-          background: `linear-gradient(180deg, ${setting.color}33 0%, transparent 100%)`,
-          boxShadow: `0 0 8px ${setting.color}40`,
+          background:
+            'linear-gradient(180deg, rgba(0,246,255,0.25) 0%, transparent 100%)',
         }}
       />
-      <p
-        className="mb-2 text-[11px] font-medium uppercase tracking-widest text-[#64748b]"
-      >
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-widest text-[#64748b]">
         {setting.label}
       </p>
       <p
-        className="text-[clamp(32px,6vw,48px)] font-black leading-none"
+        className="text-[clamp(32px,6vw,48px)] font-black leading-none text-white"
         style={{
-          background: 'linear-gradient(135deg, #ffffff, #00F6FF)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          color: 'white',
+          textShadow: '0 0 20px #00F6FF, 0 0 40px #00F6FF',
         }}
       >
         {value}
@@ -65,7 +68,8 @@ function SensitivityCard({ setting, value, index, animateBars }) {
           className="h-full rounded-full transition-[width] duration-1000 ease-out"
           style={{
             width: animateBars ? `${barWidth}%` : '0%',
-            background: `linear-gradient(90deg, ${setting.color}, #0044FF)`,
+            background: 'linear-gradient(90deg, #00F6FF, #0044FF)',
+            boxShadow: '0 0 8px #00F6FF',
           }}
         />
       </div>
@@ -110,10 +114,10 @@ export default function SensitivityResult({ result }) {
   }
 
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="animate-fadeIn space-y-4">
       <div className="animate-scaleIn text-center opacity-0">
         <div
-          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-3xl"
+          className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-3xl text-[#00F6FF]"
           style={{
             background: 'rgba(0,246,255,0.1)',
             border: '1px solid rgba(0,246,255,0.3)',
