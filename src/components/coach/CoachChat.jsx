@@ -8,8 +8,9 @@ import { sendChatMessage } from '../../lib/groqAI'
 import AuthModal from '../auth/AuthModal'
 import costaLogo from '../../assets/costa-logo.png'
 
-const CHAT_COUNT_KEY = 'hafynx_chat_count'
-const CHAT_RESET_KEY = 'hafynx_chat_reset'
+const ADMIN_EMAILS = ['zainlha309@gmail.com']
+const GUEST_COUNT_KEY = 'hafynx_chat_count_guest'
+const GUEST_RESET_KEY = 'hafynx_chat_reset_guest'
 const FREE_MESSAGE_LIMIT = 3
 const RESET_MS = 48 * 60 * 60 * 1000
 
@@ -24,13 +25,21 @@ Help with sensitivity settings and gameplay.
 Be friendly, short (2-3 sentences), and speak like a pro South Asian gamer.
 Never say you cannot help with Free Fire topics.`
 
-function loadUsageFromStorage() {
+function getStorageKeys(user) {
+  if (!user?.id) {
+    return { countKey: GUEST_COUNT_KEY, resetKey: GUEST_RESET_KEY }
+  }
+  return {
+    countKey: `hafynx_chat_count_${user.id}`,
+    resetKey: `hafynx_chat_reset_${user.id}`,
+  }
+}
+
+function loadUsageFromStorage(user) {
+  const { countKey, resetKey } = getStorageKeys(user)
   const now = Date.now()
-  let count = parseInt(localStorage.getItem(CHAT_COUNT_KEY) || '0', 10)
-  let resetTime = parseInt(
-    localStorage.getItem(CHAT_RESET_KEY) || String(now),
-    10,
-  )
+  let count = parseInt(localStorage.getItem(countKey) || '0', 10)
+  let resetTime = parseInt(localStorage.getItem(resetKey) || String(now), 10)
 
   if (Number.isNaN(count)) count = 0
   if (Number.isNaN(resetTime)) resetTime = now
@@ -38,11 +47,11 @@ function loadUsageFromStorage() {
   if (now - resetTime >= RESET_MS) {
     count = 0
     resetTime = now
-    localStorage.setItem(CHAT_COUNT_KEY, '0')
-    localStorage.setItem(CHAT_RESET_KEY, String(resetTime))
+    localStorage.setItem(countKey, '0')
+    localStorage.setItem(resetKey, String(resetTime))
   }
 
-  return { count, resetTime }
+  return { count, resetTime, countKey, resetKey }
 }
 
 function getHoursUntilReset(resetTime) {
@@ -51,12 +60,12 @@ function getHoursUntilReset(resetTime) {
   return Math.ceil(remaining / (60 * 60 * 1000))
 }
 
-function incrementUsageCount() {
-  const { count, resetTime } = loadUsageFromStorage()
+function incrementUsageCount(user) {
+  const { count, resetTime, countKey, resetKey } = loadUsageFromStorage(user)
   const next = count + 1
-  localStorage.setItem(CHAT_COUNT_KEY, String(next))
+  localStorage.setItem(countKey, String(next))
   if (count === 0) {
-    localStorage.setItem(CHAT_RESET_KEY, String(resetTime || Date.now()))
+    localStorage.setItem(resetKey, String(resetTime || Date.now()))
   }
   return next
 }
@@ -64,6 +73,9 @@ function incrementUsageCount() {
 export default function CoachChat() {
   const { user } = useAuth()
   const { isPro, loading: subscriptionLoading } = useSubscription()
+
+  const isAdmin = Boolean(user && ADMIN_EMAILS.includes(user.email))
+  const hasUnlimitedAccess = isAdmin || isPro
 
   const [isOpen, setIsOpen] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -79,24 +91,34 @@ export default function CoachChat() {
   const inputRef = useRef(null)
 
   useEffect(() => {
-    const { count, resetTime } = loadUsageFromStorage()
+    if (isAdmin) {
+      setCanSendMessage(true)
+      return
+    }
+
+    const { count, resetTime } = loadUsageFromStorage(user)
     setMessageCount(count)
     setLastResetTime(resetTime)
-  }, [])
+  }, [user?.id, isAdmin])
 
   useEffect(() => {
     if (subscriptionLoading) return
+
+    if (isAdmin) {
+      setCanSendMessage(true)
+      return
+    }
 
     if (isPro) {
       setCanSendMessage(true)
       return
     }
 
-    const { count, resetTime } = loadUsageFromStorage()
+    const { count, resetTime } = loadUsageFromStorage(user)
     setMessageCount(count)
     setLastResetTime(resetTime)
     setCanSendMessage(count < FREE_MESSAGE_LIMIT)
-  }, [isPro, subscriptionLoading, isOpen])
+  }, [isPro, isAdmin, subscriptionLoading, isOpen, user?.id])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -111,7 +133,8 @@ export default function CoachChat() {
   async function handleSend() {
     const text = input.trim()
     if (!text || isTyping || !user) return
-    if (!isPro && !canSendMessage) return
+
+    if (!isAdmin && !hasUnlimitedAccess && !canSendMessage) return
 
     const {
       data: { session },
@@ -148,11 +171,12 @@ export default function CoachChat() {
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
     }
 
-    if (!isPro) {
-      const newCount = incrementUsageCount()
+    if (!isAdmin && !hasUnlimitedAccess) {
+      const newCount = incrementUsageCount(user)
       setMessageCount(newCount)
+      const { resetKey } = getStorageKeys(user)
       setLastResetTime(
-        parseInt(localStorage.getItem(CHAT_RESET_KEY) || String(Date.now()), 10),
+        parseInt(localStorage.getItem(resetKey) || String(Date.now()), 10),
       )
       if (newCount >= FREE_MESSAGE_LIMIT) {
         setCanSendMessage(false)
@@ -168,6 +192,7 @@ export default function CoachChat() {
   }
 
   const hoursUntilReset = getHoursUntilReset(lastResetTime)
+  const showLimitMessage = user && !hasUnlimitedAccess && !canSendMessage
 
   return (
     <>
@@ -303,7 +328,7 @@ export default function CoachChat() {
                   Login
                 </button>
               </div>
-            ) : !isPro && !canSendMessage ? (
+            ) : showLimitMessage ? (
               <div
                 className="m-3 rounded-xl border border-[#00F6FF]/30 p-4 text-center"
                 style={{ background: 'rgba(0,246,255,0.05)' }}
