@@ -6,6 +6,10 @@ import CalculatingScreen, {
   runCalculatingAnimation,
 } from '../components/calculator/CalculatingScreen'
 
+// NOTE: sensitivityEngine.js is intentionally NOT imported here.
+// AI is the only source of sensitivity values. The formula engine
+// is reached only as a fallback from inside groqAI.js.
+
 const INITIAL_CALC_STATE = {
   stepIndex: 0,
   progress: 0,
@@ -39,22 +43,72 @@ export default function CalculatorPage() {
     setResult(null)
     setCalcState(INITIAL_CALC_STATE)
 
-    const aiTask = getAISensitivity(params)
-    let aiResult = null
-    aiTask.then((r) => {
-      aiResult = r
-    })
+    // Pass exactly the keys the AI endpoint expects.
+    // SensitivityForm already produces them with the right names,
+    // but we re-shape here to make the contract explicit.
+    const aiPayload = {
+      deviceName: params.deviceName || 'Custom Device',
+      deviceDPI: Number(params.deviceDPI) || 0,
+      deviceType: params.deviceType || inferDeviceType(params.deviceDPI),
+      playstyle: params.playstyle,
+      experience: params.experience,
+      preferredRange: params.preferredRange,
+      scopes: params.scopes,
+    }
 
+    // Kick off the AI request immediately so it runs in parallel
+    // with the calculating animation.
+    let aiResult = null
+    let aiDone = false
+    let aiError = null
+
+    const aiTask = getAISensitivity(aiPayload)
+      .then((r) => {
+        aiResult = r
+        aiDone = true
+        return r
+      })
+      .catch((e) => {
+        aiError = e
+        aiDone = true
+        return null
+      })
+
+    // Run the animated progress UI.
     await runCalculatingAnimation((update) => {
       setCalcState(update)
     })
 
-    if (!aiResult) {
+    // If the AI hasn't responded yet, show the finalizing screen
+    // and wait for it. getAISensitivity already catches its own
+    // failures and returns the smart fallback, so this await
+    // will almost always resolve with a valid result object.
+    if (!aiDone) {
       setCalcState(FINALIZING_STATE)
-      aiResult = await aiTask
+      await aiTask
     }
 
-    setResult(aiResult)
+    if (!aiResult) {
+      // Extremely defensive: getAISensitivity catches its own errors
+      // and returns a fallback, so we should never reach here. If we
+      // do, surface a clear message instead of a blank screen.
+      console.error('Unexpected: no AI result and no fallback.', aiError)
+      setResult({
+        general: 100,
+        redDot: 95,
+        x2Scope: 85,
+        x4Scope: 75,
+        sniper: 55,
+        freeLook: 120,
+        closestPro: 'Pro Player Average',
+        analysis:
+          'We could not reach HAFYN X AI right now. These are safe default values you can fine-tune.',
+        tips: 'Try again in a few seconds for a fully personalized result.',
+      })
+    } else {
+      setResult(aiResult)
+    }
+
     setIsCalculating(false)
   }
 
@@ -121,4 +175,14 @@ export default function CalculatorPage() {
       </div>
     </div>
   )
+}
+
+// Lightweight inference if the form ever forwards an unknown
+// deviceType (e.g. manual DPI entry without a selected device).
+function inferDeviceType(dpi) {
+  const n = Number(dpi) || 0
+  if (n >= 800) return 'android_flagship'
+  if (n >= 500) return 'android_gaming'
+  if (n >= 400) return 'android_mid'
+  return 'android_budget'
 }
