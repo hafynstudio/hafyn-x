@@ -92,7 +92,12 @@ PERSONALITY:
     );
 
     if (!response.ok) {
-      throw new Error('Groq failed');
+      const errorText = await response.text();
+      console.error('Groq API Error:', 
+        response.status, errorText);
+      throw new Error(
+        `Groq failed: ${response.status} - ${errorText}`
+      );
     }
 
     const data = await response.json();
