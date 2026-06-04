@@ -17,17 +17,15 @@ const RESET_MS = 48 * 60 * 60 * 1000
 const INITIAL_MESSAGE = {
   role: 'assistant',
   content:
-    "Hey! 👋 I'm your HAFYN X sensitivity coach. Ask me anything about your Free Fire settings, sensitivity adjustments, or gameplay tips!",
+    "Hey! 👋 I'm your HAFYN X sensitivity coach. Tell me your device and playstyle — I'll calculate your exact sensitivity right here!",
 }
-
-const COACH_SYSTEM_PROMPT = `You are HAFYN X, an elite Free Fire sensitivity coach made by Costa Gamerz Pakistan.
-Help with sensitivity settings and gameplay.
-Be friendly, short (2-3 sentences), and speak like a pro South Asian gamer.
-Never say you cannot help with Free Fire topics.`
 
 function getStorageKeys(user) {
   if (!user?.id) {
-    return { countKey: GUEST_COUNT_KEY, resetKey: GUEST_RESET_KEY }
+    return { 
+      countKey: GUEST_COUNT_KEY, 
+      resetKey: GUEST_RESET_KEY 
+    }
   }
   return {
     countKey: `hafynx_chat_count_${user.id}`,
@@ -38,8 +36,12 @@ function getStorageKeys(user) {
 function loadUsageFromStorage(user) {
   const { countKey, resetKey } = getStorageKeys(user)
   const now = Date.now()
-  let count = parseInt(localStorage.getItem(countKey) || '0', 10)
-  let resetTime = parseInt(localStorage.getItem(resetKey) || String(now), 10)
+  let count = parseInt(
+    localStorage.getItem(countKey) || '0', 10
+  )
+  let resetTime = parseInt(
+    localStorage.getItem(resetKey) || String(now), 10
+  )
 
   if (Number.isNaN(count)) count = 0
   if (Number.isNaN(resetTime)) resetTime = now
@@ -61,20 +63,30 @@ function getHoursUntilReset(resetTime) {
 }
 
 function incrementUsageCount(user) {
-  const { count, resetTime, countKey, resetKey } = loadUsageFromStorage(user)
+  const { 
+    count, resetTime, countKey, resetKey 
+  } = loadUsageFromStorage(user)
   const next = count + 1
   localStorage.setItem(countKey, String(next))
   if (count === 0) {
-    localStorage.setItem(resetKey, String(resetTime || Date.now()))
+    localStorage.setItem(
+      resetKey, 
+      String(resetTime || Date.now())
+    )
   }
   return next
 }
 
 export default function CoachChat() {
   const { user } = useAuth()
-  const { isPro, loading: subscriptionLoading } = useSubscription()
+  const { 
+    isPro, 
+    loading: subscriptionLoading 
+  } = useSubscription()
 
-  const isAdmin = Boolean(user && ADMIN_EMAILS.includes(user.email))
+  const isAdmin = Boolean(
+    user && ADMIN_EMAILS.includes(user.email)
+  )
   const hasUnlimitedAccess = isAdmin || isPro
 
   const [isOpen, setIsOpen] = useState(false)
@@ -90,40 +102,40 @@ export default function CoachChat() {
   const chatEndRef = useRef(null)
   const inputRef = useRef(null)
 
+  // Load usage on mount / user change
   useEffect(() => {
     if (isAdmin) {
       setCanSendMessage(true)
       return
     }
-
     const { count, resetTime } = loadUsageFromStorage(user)
     setMessageCount(count)
     setLastResetTime(resetTime)
   }, [user?.id, isAdmin])
 
+  // Update canSendMessage when subscription loads
   useEffect(() => {
     if (subscriptionLoading) return
-
     if (isAdmin) {
       setCanSendMessage(true)
       return
     }
-
     if (isPro) {
       setCanSendMessage(true)
       return
     }
-
     const { count, resetTime } = loadUsageFromStorage(user)
     setMessageCount(count)
     setLastResetTime(resetTime)
     setCanSendMessage(count < FREE_MESSAGE_LIMIT)
   }, [isPro, isAdmin, subscriptionLoading, isOpen, user?.id])
 
+  // Auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping, isOpen])
 
+  // Focus input
   useEffect(() => {
     if (isOpen && user && canSendMessage) {
       inputRef.current?.focus()
@@ -133,8 +145,8 @@ export default function CoachChat() {
   async function handleSend() {
     const text = input.trim()
     if (!text || isTyping || !user) return
-
-    if (!isAdmin && !hasUnlimitedAccess && !canSendMessage) return
+    if (!isAdmin && !hasUnlimitedAccess && !canSendMessage) 
+      return
 
     const {
       data: { session },
@@ -151,11 +163,30 @@ export default function CoachChat() {
     setInput('')
     setIsTyping(true)
 
+    // Get calculator result from sessionStorage
+    let lastCalculatorResult = null
+    try {
+      const stored = sessionStorage.getItem(
+        'hafynx_last_result'
+      )
+      if (stored) {
+        lastCalculatorResult = JSON.parse(stored)
+      }
+    } catch (e) {}
+
+    // Build API messages (only role + content)
     const apiMessages = nextMessages
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .filter(
+        (m) => m.role === 'user' || m.role === 'assistant'
+      )
       .map(({ role, content }) => ({ role, content }))
 
-    const reply = await sendChatMessage(apiMessages, COACH_SYSTEM_PROMPT)
+    // Send message with calculator context
+    const reply = await sendChatMessage(
+      apiMessages,
+      null,
+      lastCalculatorResult
+    )
 
     setIsTyping(false)
 
@@ -168,15 +199,22 @@ export default function CoachChat() {
         },
       ])
     } else {
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      setMessages((prev) => [
+        ...prev, 
+        { role: 'assistant', content: reply }
+      ])
     }
 
+    // Update count for free users
     if (!isAdmin && !hasUnlimitedAccess) {
       const newCount = incrementUsageCount(user)
       setMessageCount(newCount)
       const { resetKey } = getStorageKeys(user)
       setLastResetTime(
-        parseInt(localStorage.getItem(resetKey) || String(Date.now()), 10),
+        parseInt(
+          localStorage.getItem(resetKey) || String(Date.now()),
+          10
+        )
       )
       if (newCount >= FREE_MESSAGE_LIMIT) {
         setCanSendMessage(false)
@@ -192,13 +230,16 @@ export default function CoachChat() {
   }
 
   const hoursUntilReset = getHoursUntilReset(lastResetTime)
-  const showLimitMessage = user && !hasUnlimitedAccess && !canSendMessage
+  const showLimitMessage = 
+    user && !hasUnlimitedAccess && !canSendMessage
 
   return (
     <>
+      {/* Chat Modal */}
       {isOpen && (
         <div
-          className="coach-slide-up fixed z-[99] flex max-h-[520px] flex-col overflow-hidden"
+          className="coach-slide-up fixed z-[99] flex 
+            max-h-[520px] flex-col overflow-hidden"
           style={{
             bottom: '100px',
             right: '24px',
@@ -208,30 +249,38 @@ export default function CoachChat() {
             borderRadius: '20px',
             backdropFilter: 'blur(20px)',
             boxShadow:
-              '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,246,255,0.1)',
+              '0 20px 60px rgba(0,0,0,0.5), ' +
+              '0 0 40px rgba(0,246,255,0.1)',
           }}
         >
           {/* Header */}
           <div
-            className="flex shrink-0 items-center gap-3 border-b border-[rgba(0,246,255,0.1)] px-5 py-4"
+            className="flex shrink-0 items-center gap-3 
+              border-b border-[rgba(0,246,255,0.1)] px-5 py-4"
             style={{
               background:
-                'linear-gradient(135deg, rgba(0,246,255,0.1), rgba(0,68,255,0.1))',
+                'linear-gradient(135deg, ' +
+                'rgba(0,246,255,0.1), rgba(0,68,255,0.1))',
             }}
           >
             <div className="relative shrink-0">
               <img
                 src={costaLogo}
                 alt="HAFYN X Coach"
-                className="h-[42px] w-[42px] rounded-full border-2 border-[#00F6FF] object-cover"
+                className="h-[42px] w-[42px] rounded-full 
+                  border-2 border-[#00F6FF] object-cover"
               />
               <span
-                className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080912] bg-[#22c55e]"
+                className="absolute bottom-0 right-0 h-3 w-3 
+                  rounded-full border-2 border-[#080912] 
+                  bg-[#22c55e]"
                 aria-label="Online"
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-white">HAFYN X Coach</p>
+              <p className="font-bold text-white">
+                HAFYN X Coach
+              </p>
               <p className="text-xs text-[#64748b]">
                 Ask me anything about sensitivity
               </p>
@@ -239,7 +288,8 @@ export default function CoachChat() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="text-[#64748b] transition-colors hover:text-white"
+              className="text-[#64748b] transition-colors 
+                hover:text-white"
               aria-label="Close chat"
             >
               <X className="h-5 w-5" />
@@ -248,7 +298,8 @@ export default function CoachChat() {
 
           {/* Messages */}
           <div
-            className="coach-chat-scroll flex flex-1 flex-col gap-3 overflow-y-auto p-4"
+            className="coach-chat-scroll flex flex-1 
+              flex-col gap-3 overflow-y-auto p-4"
             style={{ height: '280px', maxHeight: '280px' }}
           >
             {messages.map((msg, index) => (
@@ -260,12 +311,14 @@ export default function CoachChat() {
                         alignSelf: 'flex-end',
                         maxWidth: '75%',
                         background:
-                          'linear-gradient(135deg, #00F6FF, #0044FF)',
+                          'linear-gradient(' +
+                          '135deg, #00F6FF, #0044FF)',
                         color: 'black',
                         borderRadius: '18px 18px 4px 18px',
                         padding: '10px 14px',
                         fontSize: '14px',
                         lineHeight: 1.5,
+                        wordBreak: 'break-word',
                       }
                     : {
                         alignSelf: 'flex-start',
@@ -277,6 +330,8 @@ export default function CoachChat() {
                         padding: '10px 14px',
                         fontSize: '14px',
                         lineHeight: 1.5,
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
                       }
                 }
               >
@@ -284,6 +339,7 @@ export default function CoachChat() {
               </div>
             ))}
 
+            {/* Typing indicator */}
             {isTyping && (
               <div
                 style={{
@@ -304,7 +360,8 @@ export default function CoachChat() {
                       height: 8,
                       borderRadius: '50%',
                       background: '#00F6FF',
-                      animation: `bounce 1s ease-in-out ${i * 0.2}s infinite`,
+                      animation: `bounce 1s ease-in-out 
+                        ${i * 0.2}s infinite`,
                     }}
                   />
                 ))}
@@ -313,28 +370,39 @@ export default function CoachChat() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Footer: login / limit / input */}
+          {/* Footer */}
           <div className="shrink-0 border-t border-white/[0.06]">
+            {/* Not logged in */}
             {!user ? (
-              <div className="flex flex-col items-center gap-3 px-4 py-5 text-center">
+              <div
+                className="flex flex-col items-center gap-3 
+                  px-4 py-5 text-center"
+              >
                 <p className="text-sm text-[#94A3B8]">
                   Login to chat with your coach
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="rounded-lg border border-white/20 px-5 py-2 text-sm font-semibold text-white transition-all hover:border-[#00F6FF] hover:text-[#00F6FF]"
+                  className="rounded-lg border border-white/20 
+                    px-5 py-2 text-sm font-semibold text-white 
+                    transition-all hover:border-[#00F6FF] 
+                    hover:text-[#00F6FF]"
                 >
                   Login
                 </button>
               </div>
+
+            /* Limit reached */
             ) : showLimitMessage ? (
               <div
-                className="m-3 rounded-xl border border-[#00F6FF]/30 p-4 text-center"
+                className="m-3 rounded-xl border 
+                  border-[#00F6FF]/30 p-4 text-center"
                 style={{ background: 'rgba(0,246,255,0.05)' }}
               >
                 <p className="text-2xl">🔒</p>
-                <p className="mt-2 text-sm font-semibold text-white">
+                <p className="mt-2 text-sm font-semibold 
+                  text-white">
                   You&apos;ve used your 3 free messages
                 </p>
                 <p className="mt-1 text-xs text-[#64748b]">
@@ -344,11 +412,16 @@ export default function CoachChat() {
                 <Link
                   to="/pricing"
                   onClick={() => setIsOpen(false)}
-                  className="mt-3 inline-block rounded-lg bg-gradient-to-r from-[#00F6FF] to-[#0044FF] px-4 py-2 text-sm font-bold text-black transition hover:brightness-110"
+                  className="mt-3 inline-block rounded-lg 
+                    bg-gradient-to-r from-[#00F6FF] to-[#0044FF] 
+                    px-4 py-2 text-sm font-bold text-black 
+                    transition hover:brightness-110"
                 >
                   Go Pro for unlimited coaching →
                 </Link>
               </div>
+
+            /* Input */
             ) : (
               <div className="flex gap-2 px-4 py-3">
                 <input
@@ -358,14 +431,22 @@ export default function CoachChat() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={isTyping}
-                  placeholder="Ask about your sensitivity..."
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-[#64748b] focus:border-[#00F6FF] disabled:opacity-50"
+                  placeholder="e.g. Vivo Y100, 520 DPI, freestyle..."
+                  className="flex-1 rounded-xl border border-white/10 
+                    bg-white/5 px-3.5 py-2.5 text-sm text-white 
+                    outline-none transition-colors 
+                    placeholder:text-[#64748b] 
+                    focus:border-[#00F6FF] disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={handleSend}
                   disabled={!input.trim() || isTyping}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg font-bold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-10 w-10 shrink-0 
+                    items-center justify-center rounded-[10px] 
+                    text-lg font-bold text-black transition 
+                    hover:brightness-110 
+                    disabled:cursor-not-allowed disabled:opacity-40"
                   style={{
                     background:
                       'linear-gradient(135deg, #00F6FF, #0044FF)',
@@ -380,7 +461,7 @@ export default function CoachChat() {
         </div>
       )}
 
-      {/* Floating button */}
+      {/* Floating Button */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -395,8 +476,10 @@ export default function CoachChat() {
           borderRadius: '50%',
           background: 'linear-gradient(135deg, #00F6FF, #0044FF)',
           boxShadow: isHovered
-            ? '0 0 32px rgba(0,246,255,0.6), 0 4px 24px rgba(0,0,0,0.4)'
-            : '0 0 20px rgba(0,246,255,0.4), 0 4px 20px rgba(0,0,0,0.3)',
+            ? '0 0 32px rgba(0,246,255,0.6), ' +
+              '0 4px 24px rgba(0,0,0,0.4)'
+            : '0 0 20px rgba(0,246,255,0.4), ' +
+              '0 4px 20px rgba(0,0,0,0.3)',
           cursor: 'pointer',
           transition: 'all 0.3s',
           transform: isHovered ? 'scale(1.1)' : 'scale(1)',
@@ -405,7 +488,8 @@ export default function CoachChat() {
         aria-label={isOpen ? 'Close coach chat' : 'Open coach chat'}
       >
         <span
-          className="coach-ripple pointer-events-none absolute rounded-full"
+          className="coach-ripple pointer-events-none 
+            absolute rounded-full"
           style={{
             inset: '-4px',
             border: '2px solid rgba(0,246,255,0.4)',

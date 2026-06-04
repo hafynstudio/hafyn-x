@@ -3,17 +3,51 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const { messages } = req.body;
 
+    // Step 1: Analyze user message for device/style info
+    const lastUserMessage = messages
+      .filter(m => m.role === 'user')
+      .pop()?.content || '';
+
+    // Step 2: Extract device and playstyle from message
+    const deviceInfo = extractDeviceInfo(lastUserMessage);
+
+    // Step 3: If device info found, run calculator first
+    let calculatorResult = null;
+    if (deviceInfo.hasDeviceInfo) {
+      try {
+        calculatorResult = await runCalculator(deviceInfo);
+      } catch (e) {
+        console.error('Calculator run failed:', e);
+      }
+    }
+
+    // Step 4: Build context with calculator result
+    let calculatorContext = '';
+    if (calculatorResult) {
+      calculatorContext = `
+CALCULATOR RESULT FOR THIS USER:
+You just ran HAFYN X calculator internally.
+These are the EXACT values to share with user:
+- General: ${calculatorResult.general}
+- Red Dot: ${calculatorResult.redDot}
+- 2x Scope: ${calculatorResult.x2Scope}
+- 4x Scope: ${calculatorResult.x4Scope}
+- Sniper: ${calculatorResult.sniper}
+- Free Look: ${calculatorResult.freeLook}
+- Closest Pro Player: ${calculatorResult.closestPro}
+
+IMPORTANT: Share THESE EXACT numbers.
+Do not make up different numbers.
+Present them naturally like a coach would.
+`;
+    }
+
+    // Step 5: Call Groq with full context
     const groqResponse = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -27,143 +61,187 @@ export default async function handler(req, res) {
           messages: [
             {
               role: 'system',
-              content: `You are HAFYN X Coach — world's best Free Fire sensitivity expert made by Costa Gamerz Pakistan.
+              content: `You are HAFYN X Coach — 
+elite Free Fire sensitivity expert by Costa Gamerz Pakistan.
 
-MOST IMPORTANT RULE — READ CAREFULLY:
-Free Fire sensitivity range is 0 to 200. NOT 0 to 100. NOT percentages.
-The game was updated by Garena. Maximum sensitivity is 200.
-ALWAYS give exact numbers between 0-200.
-NEVER say "60-70%" or "scaling 1.3" or any percentage.
-ALWAYS say "General: 165" or "try 158 for General".
+CRITICAL: Free Fire sensitivity is 0-200. NEVER say percentages.
 
-VERIFIED PRO PLAYER DATA (all values are 0-200 scale):
+${calculatorContext}
 
-FREESTYLE LEGENDS:
-ZeroX FF | POCO F3 | DPI 581 | General:198 RedDot:185 2x:160 4x:145 Sniper:85
-Jack FF | iPhone | DPI iOS | General:200 RedDot:195 2x:180 4x:165 Sniper:100
-White FF | iPhone 13 | DPI iOS | General:175 RedDot:165 2x:150 4x:140 Sniper:80
-SadxFF | Samsung A54 | DPI 720 | General:200 RedDot:190 2x:175 4x:160 Sniper:95
-Raistar | POCO X3 | DPI 480 | General:192 RedDot:175 2x:155 4x:140 Sniper:75
-Spero FF | POCO | DPI 600 | General:200 RedDot:198 2x:185 4x:170 Sniper:95
-Goppad Gaming | ROG Phone 5 | DPI 440 | General:185 RedDot:170 2x:160 4x:150 Sniper:80
-Black444 | ROG Phone 5 | DPI 500 | General:190 RedDot:180 2x:165 4x:155 Sniper:85
-Sitar07 | Infinix Note | DPI 550 | General:200 RedDot:195 2x:180 4x:170 Sniper:90
-Apelapato | iPhone 11 Pro | DPI iOS | General:165 RedDot:180 2x:150 4x:135 Sniper:70
-Tornado FF | iPhone 13 Pro | DPI iOS | General:195 RedDot:175 2x:160 4x:150 Sniper:85
-JotaFF | Redmi K40 | DPI 620 | General:200 RedDot:190 2x:170 4x:155 Sniper:90
-Syblus | iPhone 12 Pro | DPI iOS | General:185 RedDot:175 2x:160 4x:150 Sniper:90
-Nexus FF | Samsung S22 Ultra | DPI 680 | General:195 RedDot:185 2x:165 4x:155 Sniper:80
-
-RUSHERS:
-Bru Wassana | ROG Phone 6 | DPI 460 | General:165 RedDot:155 2x:145 4x:135 Sniper:75
-EVOS MR05 | iPhone 14 Pro | DPI iOS | General:175 RedDot:185 2x:160 4x:150 Sniper:65
-Loud Cauan7 | iPhone 14 | DPI iOS | General:180 RedDot:170 2x:155 4x:145 Sniper:70
-Killer FF | iPhone 13 | DPI iOS | General:160 RedDot:150 2x:140 4x:130 Sniper:80
-TSG Legend | iPhone 13 Pro | DPI iOS | General:158 RedDot:148 2x:138 4x:128 Sniper:72
-Fluxo Regis | iPhone 14 | DPI iOS | General:162 RedDot:155 2x:145 4x:135 Sniper:68
-Frontal Gaming | iPhone 13 | DPI iOS | General:155 RedDot:165 2x:145 4x:135 Sniper:60
-Bru Moshi | ROG Phone 6 | DPI 450 | General:170 RedDot:160 2x:150 4x:140 Sniper:75
-Bru Joena | ROG Phone 6 | DPI 460 | General:165 RedDot:155 2x:145 4x:135 Sniper:70
-Loud Thurzin | iPhone 13 | DPI iOS | General:160 RedDot:150 2x:140 4x:130 Sniper:85
-Ungraduate Gamer | ROG Phone 5 | DPI 430 | General:160 RedDot:150 2x:140 4x:130 Sniper:75
-
-SNIPERS:
-Pahadi Gaming | ROG Phone 5 | DPI 440 | General:140 RedDot:130 2x:120 4x:110 Sniper:85
-Mafia Bala | iPhone 14 Pro | DPI iOS | General:155 RedDot:145 2x:135 4x:125 Sniper:95
-Loud Kroonos | iPhone 13 | DPI iOS | General:145 RedDot:135 2x:125 4x:115 Sniper:75
-Snipuw FF | Redmi K Series | DPI 520 | General:165 RedDot:155 2x:145 4x:135 Sniper:90
-TSG Ritik | iPhone 13 | DPI iOS | General:148 RedDot:138 2x:128 4x:118 Sniper:80
-Bru Lukzbaa | ROG Phone 6 | DPI 450 | General:150 RedDot:140 2x:130 4x:120 Sniper:88
-Action Bolt | Samsung S23 Ultra | DPI 580 | General:170 RedDot:160 2x:150 4x:140 Sniper:100
-Kaka FF | ROG Phone 5 | DPI 460 | General:160 RedDot:150 2x:140 4x:130 Sniper:86
-Najeeb Gaming | iPhone 13 Pro | DPI iOS | General:158 RedDot:148 2x:138 4x:128 Sniper:92
-Guxs FF | POCO X4 Pro | DPI 600 | General:180 RedDot:165 2x:155 4x:145 Sniper:90
-Vincenzo | iPhone 11 Pro | DPI iOS | General:145 RedDot:135 2x:125 4x:115 Sniper:65
-Frostty | iPhone XR | DPI iOS | General:162 RedDot:152 2x:142 4x:132 Sniper:88
-
-LONG RANGE / MARKSMAN:
-Vasiyo CRJ7 | iPhone 14 Pro | DPI iOS | General:145 RedDot:135 2x:120 4x:110 Sniper:60
-TSG Jash | iPhone 13 | DPI iOS | General:150 RedDot:140 2x:130 4x:120 Sniper:65
-Loud Will | iPhone 14 Pro | DPI iOS | General:142 RedDot:132 2x:122 4x:112 Sniper:62
-Fozyajay | ROG Phone 5 | DPI 411 | General:140 RedDot:130 2x:125 4x:115 Sniper:70
-Rakesh0007 | OnePlus 9 Pro | DPI 480 | General:155 RedDot:145 2x:135 4x:125 Sniper:75
-Total Gaming Ajay | ROG Phone 5 | DPI 430 | General:145 RedDot:135 2x:125 4x:115 Sniper:65
-Sooneeta | iPhone 13 Pro | DPI iOS | General:152 RedDot:142 2x:132 4x:122 Sniper:72
-Desi Gamers Amit | ROG Phone 5 | DPI 420 | General:145 RedDot:135 2x:125 4x:115 Sniper:65
-
-MID RANGE:
-Syblus Mid | iPhone 12 Pro | DPI iOS | General:185 RedDot:175 2x:160 4x:150 Sniper:90
-Nobru | ROG Phone 6 | DPI 480 | General:150 RedDot:145 2x:135 4x:125 Sniper:65
-Badge99 | iPhone 14 Pro | DPI iOS | General:160 RedDot:150 2x:140 4x:130 Sniper:75
-Gyan Sujan | OnePlus 9 Pro | DPI 450 | General:165 RedDot:160 2x:150 4x:140 Sniper:80
-M8N Egypt | iPhone 12 | DPI iOS | General:180 RedDot:170 2x:155 4x:145 Sniper:85
-BNL Tunisia | iPhone 13 Pro | DPI iOS | General:175 RedDot:190 2x:160 4x:150 Sniper:85
-Ungraduate Mid | ROG Phone 5 | DPI 430 | General:162 RedDot:157 2x:147 4x:137 Sniper:77
-Techno Gamerz | OnePlus 8T | DPI 450 | General:158 RedDot:148 2x:138 4x:128 Sniper:78
-AS Gaming | iPhone 12 Pro | DPI iOS | General:150 RedDot:140 2x:130 4x:120 Sniper:70
+PRO PLAYER DATA (0-200 scale):
+ZeroX FF | POCO F3 DPI:581 | G:198 RD:185 2x:160 4x:145 SNP:85
+Jack FF | iPhone | G:200 RD:195 2x:180 4x:165 SNP:100
+White FF | iPhone | G:175 RD:165 2x:150 4x:140 SNP:80
+SadxFF | Samsung A54 DPI:720 | G:200 RD:190 2x:175 4x:160 SNP:95
+Raistar | POCO X3 DPI:480 | G:192 RD:175 2x:155 4x:140 SNP:75
+Spero FF | DPI:600 | G:200 RD:198 2x:185 4x:170 SNP:95
+Pahadi Gaming | ROG DPI:440 | G:140 RD:130 2x:120 4x:110 SNP:85
+Mafia Bala | iPhone | G:155 RD:145 2x:135 4x:125 SNP:95
+Bru Wassana | ROG DPI:460 | G:165 RD:155 2x:145 4x:135 SNP:75
+EVOS MR05 | iPhone | G:175 RD:185 2x:160 4x:150 SNP:65
+Snipuw FF | Redmi DPI:520 | G:165 RD:155 2x:145 4x:135 SNP:90
+Vasiyo CRJ7 | iPhone | G:145 RD:135 2x:120 4x:110 SNP:60
+Syblus | iPhone | G:185 RD:175 2x:160 4x:150 SNP:90
+Nobru | ROG DPI:480 | G:150 RD:145 2x:135 4x:125 SNP:65
+Badge99 | iPhone | G:160 RD:150 2x:140 4x:130 SNP:75
+Action Bolt | Samsung S23U DPI:580 | G:170 RD:160 2x:150 4x:140 SNP:100
 
 DEVICE RULES:
-- iPhone (any model): Use pro values directly. iOS touch = needs higher sensitivity
-- Android Gaming (ROG/POCO/iQOO/RedMagic): 95-97% of iPhone values
-- Android Flagship (OnePlus/Samsung S series): 85-90% of iPhone values  
-- Android Mid (Samsung A series/Redmi Note): 88-93% of iPhone values
-- Android Budget (Infinix/Tecno/basic Redmi): 90-95% of iPhone values
-- DPI 400-500: Standard Android mid values
-- DPI 500-650: Slightly lower than standard (higher DPI = less sensitivity needed)
-- DPI 650+: Noticeably lower values needed
-- Vivo Y100 DPI ~401: Use Android mid values
+- iPhone: highest values
+- Android Gaming ROG/POCO/iQOO DPI 440-600: 95% of iPhone
+- Android Mid Samsung A/Redmi Note DPI 380-500: 88-92%
+- Android Budget Infinix/Tecno DPI <400: 90-95%
+- Vivo Y100 DPI ~401: Android mid values
+- Higher DPI = lower sensitivity
 
-EXAMPLES OF CORRECT ANSWERS:
-User asks "sensitivity for Vivo Y100 520 DPI":
-CORRECT: "Bhai Vivo Y100 ke liye try karo: General: 158, Red Dot: 148, 2x: 138, 4x: 128, Sniper: 75. Similar to Snipuw FF who uses 520 DPI!"
-WRONG: "try 60-70% sensitivity" or "DPI scaling 1.3"
+HOW TO RESPOND:
+If calculator result is available above:
+Share those EXACT numbers naturally.
+Say: "HAFYN X ne calculate kiya hai tera..."
+Then explain WHY those values suit them.
 
-User asks "what is Jack FF sensitivity":
-CORRECT: "Jack FF uses General:200, RedDot:195, 2x:180, 4x:165, Sniper:100 on iPhone"
-WRONG: any percentage or scaling values
+If no device info in message:
+Ask what device and playstyle they use.
+Then you can calculate for them.
 
-COACHING PERSONALITY:
-- Always give SPECIFIC numbers in 0-200 range
-- Reference pro players by name when relevant  
-- Compare user device to similar pro player device
-- Keep answers short: 2-4 sentences max
-- Friendly South Asian gaming coach tone
-- Casual language, like a friend who is pro player
-- If user asks about a specific pro player, give their exact numbers`
+ALWAYS:
+- Specific numbers like "General: 165"
+- Reference pro player by name
+- Short 3-5 sentences
+- Friendly South Asian coach tone
+- If they verify on calculator → same numbers will show`
             },
             {
               role: 'assistant',
-              content: 'Assalam o Alaikum! Main HAFYN X Coach hun. Free Fire mein sensitivity 0 se 200 tak hoti hai aur main hamesha exact numbers dunga jaise "General: 165" — kabhi percentage nahi. Poocho jo bhi poochna ho!'
+              content: 'Assalam o Alaikum! Main HAFYN X Coach hun. Device aur playstyle batao — main abhi calculate karke exact sensitivity dunga!'
             },
             ...messages
           ],
-          temperature: 0.5,
-          max_tokens: 350
+          temperature: 0.3,
+          max_tokens: 400
         })
       }
     );
 
     if (!groqResponse.ok) {
-      const errorText = await groqResponse.text();
-      console.error('Groq API Error:', 
-        groqResponse.status, errorText);
-      return res.status(500).json({ 
-        error: `Groq failed: ${groqResponse.status}` 
-      });
+      const err = await groqResponse.text();
+      console.error('Groq Error:', groqResponse.status, err);
+      return res.status(500).json({ error: 'Groq failed' });
     }
 
     const data = await groqResponse.json();
-    const responseText = 
-      data.choices[0].message.content;
-    
-    return res.status(200).json({ 
-      response: responseText 
+    return res.status(200).json({
+      response: data.choices[0].message.content
     });
 
   } catch (error) {
-    console.error('Chat handler error:', error);
-    return res.status(500).json({ 
-      error: error.message 
-    });
+    console.error('Handler error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
+
+// ─── Helper: Extract device info from message ───────────────
+function extractDeviceInfo(message) {
+  const msg = message.toLowerCase();
+
+  // Detect playstyle
+  let playstyle = 'balanced_competitive';
+  if (msg.includes('freestyle') || msg.includes('free style'))
+    playstyle = 'freestyle_speedster';
+  else if (msg.includes('sniper') || msg.includes('long range'))
+    playstyle = 'scope_master';
+  else if (msg.includes('rush') || msg.includes('aggressive'))
+    playstyle = 'hip_fire_destroyer';
+  else if (msg.includes('beginner') || msg.includes('new'))
+    playstyle = 'beginner_friendly';
+  else if (msg.includes('mid') || msg.includes('balanced'))
+    playstyle = 'balanced_competitive';
+
+  // Detect experience
+  let experience = 'intermediate';
+  if (msg.includes('beginner') || msg.includes('new player'))
+    experience = 'beginner';
+  else if (msg.includes('pro') || msg.includes('professional'))
+    experience = 'professional';
+  else if (msg.includes('advanced') || msg.includes('experienced'))
+    experience = 'advanced';
+
+  // Detect DPI from message
+  let deviceDPI = 400;
+  let deviceType = 'android_mid';
+  let deviceName = 'Android Phone';
+
+  const dpiMatch = msg.match(/(\d{3,4})\s*dpi/);
+  if (dpiMatch) {
+    deviceDPI = parseInt(dpiMatch[1]);
+  }
+
+  // Detect device type
+  if (msg.includes('iphone') || msg.includes('ios') || 
+      msg.includes('apple')) {
+    deviceType = 'iphone';
+    deviceDPI = 460;
+    deviceName = 'iPhone';
+    
+    // Specific models
+    if (msg.includes('16 pro')) deviceName = 'iPhone 16 Pro';
+    else if (msg.includes('16')) deviceName = 'iPhone 16';
+    else if (msg.includes('15 pro')) deviceName = 'iPhone 15 Pro';
+    else if (msg.includes('15')) deviceName = 'iPhone 15';
+    else if (msg.includes('14 pro')) deviceName = 'iPhone 14 Pro';
+    else if (msg.includes('14')) deviceName = 'iPhone 14';
+    else if (msg.includes('13 pro')) deviceName = 'iPhone 13 Pro';
+    else if (msg.includes('13')) deviceName = 'iPhone 13';
+    else if (msg.includes('12')) deviceName = 'iPhone 12';
+    else if (msg.includes('11')) deviceName = 'iPhone 11';
+  }
+
+  // Samsung
+  else if (msg.includes('samsung') || msg.includes('galaxy')) {
+    deviceName = 'Samsung Galaxy';
+    if (msg.includes('s23') || msg.includes('s24') || 
+        msg.includes('s22')) {
+      deviceType = 'android_flagship';
+      deviceDPI = 500;
+      deviceName = 'Samsung Galaxy S Series';
+    } else if (msg.includes('a54') || msg.includes('a34') || 
+               msg.includes('a55')) {
+      deviceType = 'android_mid';
+      deviceDPI = 401;
+      deviceName = 'Samsung Galaxy A Series';
+    } else if (msg.includes('a14') || msg.includes('a15') || 
+               msg.includes('a05')) {
+      deviceType = 'android_budget';
+      deviceDPI = 401;
+      deviceName = 'Samsung Galaxy A14/A15';
+    } else {
+      deviceType = 'android_mid';
+      deviceDPI = 401;
+    }
+  }
+
+  // Xiaomi/Redmi/POCO
+  else if (msg.includes('xiaomi') || msg.includes('redmi') || 
+           msg.includes('poco')) {
+    if (msg.includes('poco f') || msg.includes('poco x5') || 
+        msg.includes('poco x6')) {
+      deviceType = 'android_gaming';
+      deviceDPI = 450;
+      deviceName = 'POCO F/X Series';
+    } else if (msg.includes('redmi note')) {
+      deviceType = 'android_mid';
+      deviceDPI = 395;
+      deviceName = 'Redmi Note Series';
+    } else {
+      deviceType = 'android_mid';
+      deviceDPI = 395;
+      deviceName = 'Xiaomi/Redmi';
+    }
+  }
+
+  // ROG / Gaming
+  else if (msg.includes('rog') || msg.includes('redmagic') || 
+           msg.includes('iqoo') || msg.includes('black shark')) {
+    deviceType = 'android_gaming';
+    deviceDPI = 480;
+    deviceName 
